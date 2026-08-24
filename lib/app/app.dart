@@ -10,13 +10,13 @@ class WhisplayerApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeControllerProvider);
+    final theme = ref.watch(themeControllerProvider);
     return MaterialApp.router(
       title: 'Whisplayer',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: themeMode,
+      theme: AppTheme.light(seed: theme.seed),
+      darkTheme: AppTheme.dark(seed: theme.seed),
+      themeMode: theme.mode,
       routerConfig: ref.watch(appRouterProvider),
     );
   }
