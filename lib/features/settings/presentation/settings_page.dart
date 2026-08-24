@@ -4,18 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:whisplayer/core/locale/language_controller.dart';
 import 'package:whisplayer/features/settings/application/overlay_controller.dart';
 import 'package:whisplayer/features/settings/application/theme_font_size.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final locale = ref.watch(languageControllerProvider).locale;
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          const SliverAppBar.large(title: Text('设置')),
+          SliverAppBar.large(title: Text(l10n.settingsTitle)),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -26,8 +30,8 @@ class SettingsPage extends ConsumerWidget {
                 ),
                 child: ListTile(
                   leading: const Icon(Icons.palette_outlined),
-                  title: const Text('外观'),
-                  subtitle: const Text('主题模式与主题色'),
+                  title: Text(l10n.appearanceEntry),
+                  subtitle: Text(l10n.appearanceSubtitle),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/settings/appearance'),
                 ),
@@ -43,9 +47,27 @@ class SettingsPage extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: ListTile(
+                  leading: const Icon(Icons.language_rounded),
+                  title: Text(l10n.languageEntry),
+                  subtitle: Text(_languageName(l10n, locale)),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _showLanguageDialog(context, ref),
+                ),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: ListTile(
                   leading: const Icon(Icons.library_music_outlined),
-                  title: const Text('扫描音乐'),
-                  subtitle: const Text('导入本地音频文件'),
+                  title: Text(l10n.scanEntry),
+                  subtitle: Text(l10n.scanSubtitle),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/settings/scan'),
                 ),
@@ -62,8 +84,8 @@ class SettingsPage extends ConsumerWidget {
                 ),
                 child: ListTile(
                   leading: const Icon(Icons.leaderboard_rounded),
-                  title: const Text('播放统计'),
-                  subtitle: const Text('最常播放与累计时长'),
+                  title: Text(l10n.statsEntry),
+                  subtitle: Text(l10n.statsSubtitle),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/library/stats'),
                 ),
@@ -80,8 +102,8 @@ class SettingsPage extends ConsumerWidget {
                 ),
                 child: ListTile(
                   leading: const Icon(Icons.dns_outlined),
-                  title: const Text('远程音乐服务器'),
-                  subtitle: const Text('Navidrome / Subsonic 自建服务'),
+                  title: Text(l10n.remoteServersEntry),
+                  subtitle: Text(l10n.remoteServersSubtitle),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.push('/settings/remote-servers'),
                 ),
@@ -92,6 +114,64 @@ class SettingsPage extends ConsumerWidget {
             child: Padding(
               padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: _DesktopLyricsCard(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _languageName(AppLocalizations l10n, Locale? locale) {
+    if (locale == null) {
+      return l10n.languageFollowSystem;
+    }
+    return switch (locale.toLanguageTag()) {
+      'zh' => l10n.languageZhHans,
+      'zh-TW' => l10n.languageZhHant,
+      'ja' => l10n.languageJa,
+      'ko' => l10n.languageKo,
+      'en' => l10n.languageEn,
+      _ => l10n.languageFollowSystem,
+    };
+  }
+
+  Future<void> _showLanguageDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final current = ref.read(languageControllerProvider).locale;
+    final options = <(Locale?, String)>[
+      (null, l10n.languageFollowSystem),
+      (const Locale('zh'), l10n.languageZhHans),
+      (const Locale('zh', 'TW'), l10n.languageZhHant),
+      (const Locale('ja'), l10n.languageJa),
+      (const Locale('ko'), l10n.languageKo),
+      (const Locale('en'), l10n.languageEn),
+    ];
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text(l10n.languageEntry),
+        children: [
+          RadioGroup<Locale?>(
+            groupValue: current,
+            onChanged: (value) async {
+              await ref
+                  .read(languageControllerProvider.notifier)
+                  .setLocale(value);
+              if (dialogContext.mounted) {
+                Navigator.pop(dialogContext);
+              }
+            },
+            child: Column(
+              children: [
+                for (final (locale, name) in options)
+                  RadioListTile<Locale?>(
+                    value: locale,
+                    title: Text(name),
+                  ),
+              ],
             ),
           ),
         ],
@@ -111,6 +191,7 @@ class _DesktopLyricsCard extends ConsumerStatefulWidget {
 class _DesktopLyricsCardState extends ConsumerState<_DesktopLyricsCard> {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final enabled = ref.watch(overlayControllerProvider);
     return Card(
       elevation: 0,
@@ -121,9 +202,10 @@ class _DesktopLyricsCardState extends ConsumerState<_DesktopLyricsCard> {
         children: [
           SwitchListTile(
             secondary: const Icon(Icons.lyrics_outlined),
-            title: const Text('桌面歌词'),
-            subtitle:
-                Text(enabled ? '已开启，可在其他应用上方显示' : '在其他应用上方显示当前歌词行'),
+            title: Text(l10n.desktopLyricsEntry),
+            subtitle: Text(enabled
+                ? l10n.desktopLyricsOn
+                : l10n.desktopLyricsOff),
             value: enabled,
             onChanged: (value) async {
               final messenger = ScaffoldMessenger.of(context);
@@ -132,8 +214,7 @@ class _DesktopLyricsCardState extends ConsumerState<_DesktopLyricsCard> {
                   .setEnabled(value: value);
               if (!applied) {
                 messenger.showSnackBar(
-                  const SnackBar(
-                      content: Text('需要“显示在应用上层”权限才能开启桌面歌词')),
+                  SnackBar(content: Text(l10n.desktopLyricsPermission)),
                 );
               }
             },

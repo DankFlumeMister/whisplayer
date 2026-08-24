@@ -398,6 +398,11 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.14.4"
+  flutter_localizations:
+    dependency: "direct main"
+    description: flutter
+    source: sdk
+    version: "0.0.0"
   flutter_overlay_window:
     dependency: "direct main"
     description:
@@ -553,7 +558,7 @@ packages:
     source: hosted
     version: "4.9.2"
   intl:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: intl
       sha256: "1ca20c894b1717686a2319b8548763d812bc0aabdac580420a44c5178c57a867"

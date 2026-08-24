@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 /// Curated seed colors shown in Settings → 外观.
-typedef ThemePalette = ({String name, Color seed});
+typedef ThemePalette = ({String key, Color seed});
 
 abstract final class AppTheme {
   static const defaultSeed = Color(0xFFFA2D48);
@@ -12,30 +12,30 @@ abstract final class AppTheme {
   /// Material 3 derives the whole scheme from the seed's hue, so tone-only
   /// variants would render as duplicate themes.
   static const List<ThemePalette> palettes = <ThemePalette>[
-    (name: '樱粉', seed: Color(0xFFFA2D48)),
-    (name: '品红', seed: Color(0xFFF01A96)),
-    (name: '紫藤', seed: Color(0xFF8E24AA)),
-    (name: '深紫', seed: Color(0xFF673AB7)),
-    (name: '雾紫', seed: Color(0xFFB39DDB)),
-    (name: '鸢尾', seed: Color(0xFF5C6BC0)),
-    (name: '藏青', seed: Color(0xFF1A237E)),
-    (name: '晴空', seed: Color(0xFF1E88E5)),
-    (name: '湖水', seed: Color(0xFF26C6DA)),
-    (name: '青瓷', seed: Color(0xFF00897B)),
-    (name: '亮绿', seed: Color(0xFF00E676)),
-    (name: '抹茶', seed: Color(0xFF43A047)),
-    (name: '青柠', seed: Color(0xFFCDDC39)),
-    (name: '橄榄', seed: Color(0xFF9E9D24)),
-    (name: '柠黄', seed: Color(0xFFFDD835)),
-    (name: '棕咖', seed: Color(0xFF795548)),
-    (name: '橙', seed: Color(0xFFFF9800)),
-    (name: '珊瑚', seed: Color(0xFFF4511E)),
-    (name: '蜜桃', seed: Color(0xFFFF8A65)),
-    (name: '正红', seed: Color(0xFFF44336)),
-    (name: '酒红', seed: Color(0xFF722F37)),
-    (name: '玫瑰金', seed: Color(0xFFB76E79)),
-    (name: '蓝灰', seed: Color(0xFF607D8B)),
-    (name: '灰', seed: Color(0xFF9E9E9E)),
+    (key: 'sakura', seed: Color(0xFFFA2D48)),
+    (key: 'magenta', seed: Color(0xFFF01A96)),
+    (key: 'wisteria', seed: Color(0xFF8E24AA)),
+    (key: 'deepPurple', seed: Color(0xFF673AB7)),
+    (key: 'lavender', seed: Color(0xFFB39DDB)),
+    (key: 'iris', seed: Color(0xFF5C6BC0)),
+    (key: 'navy', seed: Color(0xFF1A237E)),
+    (key: 'sky', seed: Color(0xFF1E88E5)),
+    (key: 'lake', seed: Color(0xFF26C6DA)),
+    (key: 'celadon', seed: Color(0xFF00897B)),
+    (key: 'mint', seed: Color(0xFF00E676)),
+    (key: 'matcha', seed: Color(0xFF43A047)),
+    (key: 'lime', seed: Color(0xFFCDDC39)),
+    (key: 'olive', seed: Color(0xFF9E9D24)),
+    (key: 'lemon', seed: Color(0xFFFDD835)),
+    (key: 'brown', seed: Color(0xFF795548)),
+    (key: 'orange', seed: Color(0xFFFF9800)),
+    (key: 'coral', seed: Color(0xFFF4511E)),
+    (key: 'peach', seed: Color(0xFFFF8A65)),
+    (key: 'red', seed: Color(0xFFF44336)),
+    (key: 'wine', seed: Color(0xFF722F37)),
+    (key: 'roseGold', seed: Color(0xFFB76E79)),
+    (key: 'blueGrey', seed: Color(0xFF607D8B)),
+    (key: 'grey', seed: Color(0xFF9E9E9E)),
   ];
 
   static ThemeData light({Color seed = defaultSeed}) =>

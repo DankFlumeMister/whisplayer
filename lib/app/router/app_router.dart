@@ -20,6 +20,7 @@ import 'package:whisplayer/features/settings/presentation/appearance_page.dart';
 import 'package:whisplayer/features/settings/presentation/remote_servers_page.dart';
 import 'package:whisplayer/features/settings/presentation/scan_page.dart';
 import 'package:whisplayer/features/settings/presentation/settings_page.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -155,6 +156,7 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: shell,
       bottomNavigationBar: Column(
@@ -164,21 +166,21 @@ class AppShell extends StatelessWidget {
           NavigationBar(
             selectedIndex: shell.currentIndex,
             onDestinationSelected: shell.goBranch,
-            destinations: const [
+            destinations: [
               NavigationDestination(
-                icon: Icon(Icons.library_music_outlined),
-                selectedIcon: Icon(Icons.library_music),
-                label: '本地',
+                icon: const Icon(Icons.library_music_outlined),
+                selectedIcon: const Icon(Icons.library_music),
+                label: l10n.localTab,
               ),
               NavigationDestination(
-                icon: Icon(Icons.cloud_outlined),
-                selectedIcon: Icon(Icons.cloud),
-                label: '云端',
+                icon: const Icon(Icons.cloud_outlined),
+                selectedIcon: const Icon(Icons.cloud),
+                label: l10n.cloudTab,
               ),
               NavigationDestination(
-                icon: Icon(Icons.format_list_bulleted_outlined),
-                selectedIcon: Icon(Icons.format_list_bulleted),
-                label: '播放列表',
+                icon: const Icon(Icons.format_list_bulleted_outlined),
+                selectedIcon: const Icon(Icons.format_list_bulleted),
+                label: l10n.playlistTab,
               ),
             ],
           ),

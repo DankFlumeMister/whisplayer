@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:whisplayer/app/app.dart';
+import 'package:whisplayer/core/locale/language_controller.dart';
 import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/domain/entities/album.dart';
 import 'package:whisplayer/domain/entities/artist.dart';
@@ -75,14 +76,24 @@ class _FakeLibraryRepository implements LibraryRepository {
   Future<List<Song>> songsByArtist(int artistId) async => [];
 }
 
+class _ZhLanguageController extends LanguageController {
+  @override
+  LocaleState build() => const LocaleState(locale: Locale('zh'));
+
+  @override
+  Future<void> setLocale(Locale? locale) async {}
+}
+
 void main() {
   Future<void> pumpApp(WidgetTester tester) async {
+    // Pin zh so l10n-driven labels match the Chinese assertions below.
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           libraryRepositoryProvider.overrideWithValue(
             _FakeLibraryRepository(),
           ),
+          languageControllerProvider.overrideWith(_ZhLanguageController.new),
         ],
         child: const WhisplayerApp(),
       ),
