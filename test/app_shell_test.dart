@@ -121,6 +121,10 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
 
+    await tester.tap(find.text('外观'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
     final context =
         tester.element(find.byType(SegmentedButton<ThemeMode>));
     expect(Theme.of(context).brightness, Brightness.light);

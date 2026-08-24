@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/data/subsonic/subsonic_client.dart';
+import 'package:whisplayer/data/subsonic/subsonic_models.dart';
 import 'package:whisplayer/domain/entities/remote_server.dart';
 import 'package:whisplayer/domain/repositories/remote_server_repository.dart';
 
@@ -91,6 +92,7 @@ class RemoteServersPage extends ConsumerWidget {
     var testing = false;
     var saving = false;
     String? feedback;
+    String? hint;
 
     await showDialog<void>(
       context: context,
@@ -134,6 +136,21 @@ class RemoteServersPage extends ConsumerWidget {
                       ),
                     ),
                   ),
+                if (hint != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      hint!,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -145,8 +162,9 @@ class RemoteServersPage extends ConsumerWidget {
                       setState(() {
                         testing = true;
                         feedback = null;
+                        hint = null;
                       });
-                      final ok = await _testConnection(
+                      final (ok, message) = await _testConnection(
                         urlController.text,
                         userController.text,
                         passwordController.text,
@@ -156,8 +174,8 @@ class RemoteServersPage extends ConsumerWidget {
                       }
                       setState(() {
                         testing = false;
-                        feedback =
-                            ok ? null : '连接失败，请检查地址/账号/密码';
+                        feedback = ok ? null : message;
+                        hint = ok ? null : _loopbackHint(urlController.text);
                       });
                     },
               child: testing
@@ -182,6 +200,12 @@ class RemoteServersPage extends ConsumerWidget {
                         setState(() => feedback = '请填写全部字段');
                         return;
                       }
+                      try {
+                        SubsonicClient.normalizeBaseUrl(url);
+                      } on FormatException catch (e) {
+                        setState(() => feedback = e.message);
+                        return;
+                      }
                       setState(() => saving = true);
                       await ref
                           .read(remoteServerRepositoryProvider)
@@ -194,6 +218,16 @@ class RemoteServersPage extends ConsumerWidget {
                       if (!dialogContext.mounted) {
                         return;
                       }
+                      if (_isLoopback(url)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              '注意：127.0.0.1 指向手机自身，通常应填写电脑的局域网 IP',
+                            ),
+                            duration: Duration(seconds: 5),
+                          ),
+                        );
+                      }
                       Navigator.pop(dialogContext);
                     },
               child: const Text('保存'),
@@ -204,7 +238,7 @@ class RemoteServersPage extends ConsumerWidget {
     );
   }
 
-  Future<bool> _testConnection(
+  Future<(bool, String)> _testConnection(
     String rawUrl,
     String username,
     String password,
@@ -212,18 +246,46 @@ class RemoteServersPage extends ConsumerWidget {
     if (rawUrl.trim().isEmpty ||
         username.trim().isEmpty ||
         password.isEmpty) {
-      return false;
+      return (false, '请填写地址、用户名和密码');
+    }
+    final String normalized;
+    try {
+      normalized = SubsonicClient.normalizeBaseUrl(rawUrl);
+    } on FormatException catch (e) {
+      return (false, e.message);
+    }
+    if (_isLoopback(normalized)) {
+      return (
+        false,
+        '127.0.0.1 / localhost 指向手机自身，无法访问电脑上的服务器；请填写电脑的局域网 IP（ipconfig 查看）',
+      );
     }
     try {
       final client = SubsonicClient(
-        baseUrl: rawUrl.trim(),
+        baseUrl: normalized,
         username: username.trim(),
         password: password,
       );
       await client.ping();
-      return true;
+      return (true, '连接成功 ✓ 将使用 $normalized');
+    } on SubsonicException catch (e) {
+      return (false, '服务器响应错误：${e.message}');
     } on Exception catch (_) {
-      return false;
+      return (false, '无法连接到 $normalized（请检查地址与手机网络）');
     }
+  }
+
+  static bool _isLoopback(String url) {
+    final host = Uri.tryParse(url)?.host ?? '';
+    return host == '127.0.0.1' ||
+        host == 'localhost' ||
+        host == '::1';
+  }
+
+  static String? _loopbackHint(String url) {
+    if (!_isLoopback(url)) {
+      return null;
+    }
+    return '127.0.0.1 指向手机自身，无法访问电脑上的服务器；请填写电脑的局域网 IP';
   }
 }

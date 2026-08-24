@@ -4,16 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:whisplayer/core/theme/app_theme.dart';
-import 'package:whisplayer/core/theme/theme_controller.dart';
 import 'package:whisplayer/features/settings/application/overlay_controller.dart';
+import 'package:whisplayer/features/settings/application/theme_font_size.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = ref.watch(themeControllerProvider);
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -26,69 +24,12 @@ class SettingsPage extends ConsumerWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '外观',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 12),
-                      SegmentedButton<ThemeMode>(
-                        segments: const [
-                          ButtonSegment(
-                            value: ThemeMode.system,
-                            label: Text('跟随系统'),
-                            icon: Icon(Icons.brightness_auto_outlined),
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.light,
-                            label: Text('浅色'),
-                            icon: Icon(Icons.light_mode_outlined),
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.dark,
-                            label: Text('深色'),
-                            icon: Icon(Icons.dark_mode_outlined),
-                          ),
-                        ],
-                        selected: {theme.mode},
-                        onSelectionChanged: (selection) {
-                          unawaited(
-                            ref
-                                .read(themeControllerProvider.notifier)
-                                .setMode(selection.first),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        '主题色',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          for (final palette in AppTheme.palettes)
-                            _SeedSwatch(
-                              palette: palette,
-                              selected:
-                                  palette.seed.toARGB32() ==
-                                      theme.seed.toARGB32(),
-                              onTap: () => unawaited(
-                                ref
-                                    .read(themeControllerProvider.notifier)
-                                    .setSeed(palette.seed),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
+                child: ListTile(
+                  leading: const Icon(Icons.palette_outlined),
+                  title: const Text('外观'),
+                  subtitle: const Text('主题模式与主题色'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/settings/appearance'),
                 ),
               ),
             ),
@@ -176,65 +117,62 @@ class _DesktopLyricsCardState extends ConsumerState<_DesktopLyricsCard> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
       ),
-      child: SwitchListTile(
-        secondary: const Icon(Icons.lyrics_outlined),
-        title: const Text('桌面歌词'),
-        subtitle: Text(enabled ? '已开启，可在其他应用上方显示' : '在其他应用上方显示当前歌词行'),
-        value: enabled,
-        onChanged: (value) async {
-          final messenger = ScaffoldMessenger.of(context);
-          final applied = await ref
-              .read(overlayControllerProvider.notifier)
-              .setEnabled(value: value);
-          if (!applied) {
-            messenger.showSnackBar(
-              const SnackBar(content: Text('需要“显示在应用上层”权限才能开启桌面歌词')),
-            );
-          }
-        },
-      ),
-    );
-  }
-}
-
-class _SeedSwatch extends StatelessWidget {
-  const _SeedSwatch({
-    required this.palette,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final ThemePalette palette;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final onSeed = ThemeData.estimateBrightnessForColor(palette.seed) ==
-            Brightness.dark
-        ? Colors.white
-        : Colors.black87;
-    return Tooltip(
-      message: palette.name,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: palette.seed,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: selected
-                  ? Theme.of(context).colorScheme.onSurface
-                  : Theme.of(context).colorScheme.outlineVariant,
-              width: selected ? 3 : 1,
+      child: Column(
+        children: [
+          SwitchListTile(
+            secondary: const Icon(Icons.lyrics_outlined),
+            title: const Text('桌面歌词'),
+            subtitle:
+                Text(enabled ? '已开启，可在其他应用上方显示' : '在其他应用上方显示当前歌词行'),
+            value: enabled,
+            onChanged: (value) async {
+              final messenger = ScaffoldMessenger.of(context);
+              final applied = await ref
+                  .read(overlayControllerProvider.notifier)
+                  .setEnabled(value: value);
+              if (!applied) {
+                messenger.showSnackBar(
+                  const SnackBar(
+                      content: Text('需要“显示在应用上层”权限才能开启桌面歌词')),
+                );
+              }
+            },
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Row(
+              children: [
+                const Icon(Icons.format_size_rounded, size: 22),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Slider(
+                    value: ref.watch(overlayFontSizeProvider),
+                    min: minOverlayFontSize,
+                    max: maxOverlayFontSize,
+                    divisions: 11,
+                    label: ref
+                        .watch(overlayFontSizeProvider)
+                        .toStringAsFixed(0),
+                    onChanged: (value) => unawaited(
+                      ref.read(overlayFontSizeProvider.notifier).set(value),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 36,
+                  child: Text(
+                    ref
+                        .watch(overlayFontSizeProvider)
+                        .toStringAsFixed(0),
+                    textAlign: TextAlign.end,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+              ],
             ),
           ),
-          child: selected
-              ? Icon(Icons.check_rounded, size: 22, color: onSeed)
-              : null,
-        ),
+        ],
       ),
     );
   }

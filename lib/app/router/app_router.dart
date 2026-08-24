@@ -16,6 +16,7 @@ import 'package:whisplayer/features/player/presentation/player_page.dart';
 import 'package:whisplayer/features/player/presentation/widgets/mini_player_bar.dart';
 import 'package:whisplayer/features/playlists/presentation/playlist_detail_page.dart';
 import 'package:whisplayer/features/playlists/presentation/playlists_page.dart';
+import 'package:whisplayer/features/settings/presentation/appearance_page.dart';
 import 'package:whisplayer/features/settings/presentation/remote_servers_page.dart';
 import 'package:whisplayer/features/settings/presentation/scan_page.dart';
 import 'package:whisplayer/features/settings/presentation/settings_page.dart';
@@ -39,6 +40,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'scan',
             builder: (_, __) => const ScanPage(),
+          ),
+          GoRoute(
+            path: 'appearance',
+            builder: (_, __) => const AppearancePage(),
           ),
           GoRoute(
             path: 'remote-servers',

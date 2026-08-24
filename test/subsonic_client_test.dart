@@ -110,6 +110,34 @@ void main() {
       );
     });
 
+    test('repairs missing or malformed schemes', () {
+      // Bare host: defaults to http.
+      expect(
+        clientFor('192.168.1.10:4533').restRoot,
+        'http://192.168.1.10:4533/rest',
+      );
+      // Single-slash typo the user actually hit.
+      expect(
+        clientFor('http:127.0.0.1:4533').restRoot,
+        'http://127.0.0.1:4533/rest',
+      );
+      // Triple slashes collapse.
+      expect(
+        clientFor('https:///nas.local').restRoot,
+        'https://nas.local/rest',
+      );
+      // Explicit https is preserved.
+      expect(
+        clientFor('https://nas.local').restRoot,
+        'https://nas.local/rest',
+      );
+    });
+
+    test('rejects addresses without a usable host', () {
+      expect(() => clientFor(''), throwsFormatException);
+      expect(() => clientFor('http://'), throwsFormatException);
+    });
+
     test('streamUri points at bare stream endpoint with id and auth params',
         () {
       final uri = clientFor('http://nas.local').streamUri('song-9');

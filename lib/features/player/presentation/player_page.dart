@@ -6,6 +6,8 @@ import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+// ScrollCacheExtent lives in rendering and is not re-exported by material.
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:whisplayer/domain/entities/playback.dart';
@@ -41,16 +43,17 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   @override
   void initState() {
     super.initState();
-    ref.listenManual<int>(
-      lyricsControllerProvider.select((state) => state.activeIndex),
-      (previous, next) {
-        if (next <= 0 || _followPaused) {
-          return;
-        }
-        _ensureActiveLineVisible();
-      },
-      fireImmediately: false,
-    );
+      ref.listenManual<int>(
+        lyricsControllerProvider.select((state) => state.activeIndex),
+        (previous, next) {
+          // index 0 must also re-center; only "no lyrics" (-1) skips.
+          if (next < 0 || _followPaused) {
+            return;
+          }
+          _ensureActiveLineVisible();
+        },
+        fireImmediately: false,
+      );
     ref.listenManual<double>(
       lyricsControllerProvider.select((state) => state.fontScale),
       (previous, next) {
@@ -474,6 +477,13 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
             return false;
           },
           child: ListView.builder(
+            // Keep every line's context alive so Scrollable.ensureVisible
+            // can always reach the active line, even after the user flings
+            // it far off-screen (lazy recycling would null the context).
+            // Keep every line's context alive so Scrollable.ensureVisible
+            // can always reach the active line, even after the user flings
+            // it far off-screen (lazy recycling would null the context).
+            scrollCacheExtent: const ScrollCacheExtent.pixels(100000),
             padding: EdgeInsets.symmetric(
               vertical: docked
                   ? 8

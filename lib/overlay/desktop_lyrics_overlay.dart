@@ -8,6 +8,7 @@ class OverlayPayload {
   const OverlayPayload({
     this.title = '',
     this.line = '',
+    this.fontSize = 22,
   });
 
   factory OverlayPayload.decode(dynamic raw) {
@@ -16,6 +17,7 @@ class OverlayPayload {
       return OverlayPayload(
         title: map['title'] as String? ?? '',
         line: map['line'] as String? ?? '',
+        fontSize: (map['fontSize'] as num?)?.toDouble() ?? 22,
       );
     } on FormatException catch (_) {
       return const OverlayPayload();
@@ -24,6 +26,7 @@ class OverlayPayload {
 
   final String title;
   final String line;
+  final double fontSize;
 }
 
 class DesktopLyricsOverlayApp extends StatelessWidget {
@@ -87,7 +90,7 @@ class _OverlayHomeState extends State<_OverlayHome> {
           textAlign: TextAlign.center,
           style: TextStyle(
             color: line == '♪' ? Colors.white70 : Colors.white,
-            fontSize: 22,
+            fontSize: _payload.fontSize,
             fontWeight: FontWeight.w700,
             height: 1.25,
             shadows: _lyricShadows(),

@@ -104,10 +104,14 @@ class _ProgressCard extends StatelessWidget {
           children: [
             Text(_summary(progress), style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
+            // While scanning: determinate when a fraction is known,
+            // indeterminate during the directory walk. Once finished the
+            // bar must freeze at the final fraction — a null value here
+            // would start the endless indeterminate animation.
             LinearProgressIndicator(
-              value: state.isScanning && progress != null
-                  ? progress.fraction
-                  : null,
+              value: state.isScanning
+                  ? progress?.fraction
+                  : (progress?.fraction ?? 0),
               minHeight: 6,
               borderRadius: BorderRadius.circular(3),
             ),

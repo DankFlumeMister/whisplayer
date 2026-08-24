@@ -25,13 +25,44 @@ class SubsonicClient {
         // initializing formal is unavailable here.
         // ignore: prefer_initializing_formals
         _password = password {
-    var normalized = baseUrl.endsWith('/')
-        ? baseUrl.substring(0, baseUrl.length - 1)
-        : baseUrl;
-    if (!normalized.toLowerCase().endsWith('/rest')) {
-      normalized = '$normalized/rest';
+    restRoot = normalizeBaseUrl(baseUrl);
+  }
+
+  /// Normalizes a user-typed server address into a
+  /// `<scheme>://<host>[:port][/path]/rest` root.
+  ///
+  /// Tolerates the common typos: missing scheme (`192.168.1.10:4533`),
+  /// single-slash scheme (`http:/host`) and triple slashes. Throws
+  /// [FormatException] with a user-presentable message when nothing usable
+  /// remains.
+  static String normalizeBaseUrl(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      throw const FormatException('服务器地址不能为空');
     }
-    restRoot = normalized;
+    final match =
+        RegExp(r'^(https?):/{0,3}(.*)$', caseSensitive: false)
+            .firstMatch(trimmed);
+    final scheme = (match?.group(1) ?? 'http').toLowerCase();
+    var rest = match?.group(2) ?? trimmed;
+    while (rest.startsWith('/')) {
+      rest = rest.substring(1);
+    }
+    if (rest.isEmpty) {
+      throw FormatException('服务器地址缺少主机名：$raw');
+    }
+    var url = '$scheme://$rest';
+    if (url.endsWith('/')) {
+      url = url.substring(0, url.length - 1);
+    }
+    if (!url.toLowerCase().endsWith('/rest')) {
+      url = '$url/rest';
+    }
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.host.isEmpty) {
+      throw FormatException('无法解析服务器地址：$raw');
+    }
+    return url;
   }
 
   final String username;

@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/features/player/application/lyrics_controller.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
+import 'package:whisplayer/features/settings/application/theme_font_size.dart';
 
 const _keyEnabled = 'desktop_lyrics.enabled';
 
@@ -160,6 +161,7 @@ class OverlayController extends Notifier<bool> {
     final payload = jsonEncode({
       'title': song?.title ?? '',
       'line': line,
+      'fontSize': ref.read(overlayFontSizeProvider),
     });
     if (payload == _lastPayload) {
       return;
