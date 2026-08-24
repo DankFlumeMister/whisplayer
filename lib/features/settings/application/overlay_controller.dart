@@ -88,7 +88,9 @@ class OverlayController extends Notifier<bool> {
       // Nothing running; ignore.
     }
     await FlutterOverlayWindow.showOverlay(
-      height: 150,
+      // Height must scale with the configurable font size, otherwise large
+      // sizes clip at the bottom (the plugin takes physical pixels here).
+      height: _heightPxFor(ref.read(overlayFontSizeProvider)),
       alignment: OverlayAlignment.bottomCenter,
       enableDrag: true,
       positionGravity: PositionGravity.auto,
@@ -133,6 +135,38 @@ class OverlayController extends Notifier<bool> {
         : fallbackLiftPx;
     final dp = liftPx / dpr;
     return dp < 8 ? 8 : dp;
+  }
+
+  /// Overlay window height in physical pixels for a given font size:
+  /// line height (1.25×) plus container padding and screen margins.
+  static int _heightPxFor(double fontSize) {
+    final views = WidgetsBinding.instance.platformDispatcher.views;
+    final dpr = views.isNotEmpty ? views.first.devicePixelRatio : 3.0;
+    final logical = fontSize * 1.25 + 34;
+    return (logical * dpr).round().clamp(120, 800);
+  }
+
+  /// Re-fits the overlay window after a font-size change so larger sizes
+  /// are not clipped at the bottom. No-op while the overlay is hidden.
+  Future<void> applyFontSize(double fontSize) async {
+    if (!state) {
+      return;
+    }
+    try {
+      final views = WidgetsBinding.instance.platformDispatcher.views;
+      final width = views.isNotEmpty
+          ? views.first.physicalSize.width.round()
+          : 0;
+      if (width > 0) {
+        await FlutterOverlayWindow.resizeOverlay(
+          width,
+          _heightPxFor(fontSize),
+          true,
+        );
+      }
+    } on Exception {
+      // Window not up yet or plugin refused; next _show() picks it up.
+    }
   }
 
   Future<void> pushCurrentLine() async {

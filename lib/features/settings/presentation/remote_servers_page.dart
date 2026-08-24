@@ -111,7 +111,7 @@ class RemoteServersPage extends ConsumerWidget {
                   controller: urlController,
                   decoration: const InputDecoration(
                     labelText: '服务器地址',
-                    hintText: 'http://服务器IP:端口',
+                    hintText: '例：192.168.XX.XX:4533',
                   ),
                   keyboardType: TextInputType.url,
                 ),

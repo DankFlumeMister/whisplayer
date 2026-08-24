@@ -48,22 +48,26 @@ void main() {
     await _settle();
 
     await controller.setMode(ThemeMode.dark);
-    final skyBlue = AppTheme.palettes.firstWhere((p) => p.name == '晴空').seed;
-    await controller.setSeed(skyBlue);
+    final seed = AppTheme.palettes
+        .firstWhere((p) => p.seed != AppTheme.defaultSeed)
+        .seed;
+    await controller.setSeed(seed);
     await _settle();
 
     final state = container.read(themeControllerProvider);
     expect(state.mode, ThemeMode.dark);
-    expect(state.seed, skyBlue);
+    expect(state.seed, seed);
     expect(settings.values['theme.mode'], 'dark');
-    expect(settings.values['theme.seed'], '${skyBlue.toARGB32()}');
+    expect(settings.values['theme.seed'], '${seed.toARGB32()}');
   });
 
   test('restores persisted mode and seed on startup', () async {
-    final skyBlue = AppTheme.palettes.firstWhere((p) => p.name == '晴空').seed;
+    final seed = AppTheme.palettes
+        .firstWhere((p) => p.seed != AppTheme.defaultSeed)
+        .seed;
     final settings = _InMemorySettings()
       ..values['theme.mode'] = 'light'
-      ..values['theme.seed'] = '${skyBlue.toARGB32()}';
+      ..values['theme.seed'] = '${seed.toARGB32()}';
 
     final container = _container(settings)
       ..read(themeControllerProvider);
@@ -71,7 +75,7 @@ void main() {
 
     final state = container.read(themeControllerProvider);
     expect(state.mode, ThemeMode.light);
-    expect(state.seed, skyBlue);
+    expect(state.seed, seed);
   });
 
   test('unknown persisted seed falls back to default', () async {

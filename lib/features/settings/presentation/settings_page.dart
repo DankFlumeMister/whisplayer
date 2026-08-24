@@ -154,9 +154,18 @@ class _DesktopLyricsCardState extends ConsumerState<_DesktopLyricsCard> {
                     label: ref
                         .watch(overlayFontSizeProvider)
                         .toStringAsFixed(0),
-                    onChanged: (value) => unawaited(
-                      ref.read(overlayFontSizeProvider.notifier).set(value),
-                    ),
+                    onChanged: (value) {
+                      unawaited(
+                        ref
+                            .read(overlayFontSizeProvider.notifier)
+                            .set(value),
+                      );
+                      unawaited(
+                        ref
+                            .read(overlayControllerProvider.notifier)
+                            .applyFontSize(value),
+                      );
+                    },
                   ),
                 ),
                 SizedBox(
