@@ -1,5 +1,7 @@
 # Whisplayer
 
+[![CI](https://github.com/DankFlumeMister/whisplayer/actions/workflows/ci.yml/badge.svg)](https://github.com/DankFlumeMister/whisplayer/actions/workflows/ci.yml)
+
 一款精致的 Android 本地 & 自建服务器音乐播放器。
 
 A polished local & self-hosted music player for Android, built with Flutter.
