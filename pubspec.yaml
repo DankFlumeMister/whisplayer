@@ -1,5 +1,5 @@
 name: whisplayer
-description: "Whisplayer - Apple-style local & self-hosted music player (Subsonic/Navidrome)."
+description: "Whisplayer - A polished local & self-hosted music player (Subsonic/Navidrome)."
 publish_to: 'none'
 version: 0.1.0+1
 

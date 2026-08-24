@@ -1,8 +1,8 @@
 # Whisplayer
 
-一款 Apple 风格的 Android 本地 & 自建服务器音乐播放器。
+一款精致的 Android 本地 & 自建服务器音乐播放器。
 
-An Apple-style local & self-hosted music player for Android, built with Flutter.
+A polished local & self-hosted music player for Android, built with Flutter.
 
 ## ✨ 功能特性
 
