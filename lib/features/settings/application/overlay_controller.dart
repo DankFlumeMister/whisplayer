@@ -16,6 +16,7 @@ class OverlayController extends Notifier<bool> {
   bool _restored = false;
   String? _lastPayload;
   int _pushRetries = 0;
+  int? _lastHeightPx;
 
   @override
   bool build() {
@@ -26,6 +27,24 @@ class OverlayController extends Notifier<bool> {
     );
     unawaited(_restore());
     return false;
+  }
+
+  /// Current lyric line rendered into the overlay (empty when none).
+  String _currentLine() {
+    final lyrics = ref.read(lyricsControllerProvider);
+    switch (lyrics.status) {
+      case LyricsStatus.synced:
+        final index = lyrics.activeIndex;
+        return index >= 0 && index < lyrics.document.lines.length
+            ? lyrics.document.lines[index].text.replaceAll('\n', ' ')
+            : '…';
+      case LyricsStatus.unsynced:
+        return '（纯文本歌词，暂不支持同步滚动）';
+      case LyricsStatus.none ||
+          LyricsStatus.idle ||
+          LyricsStatus.loading:
+        return '';
+    }
   }
 
   Future<void> _restore() async {
@@ -88,9 +107,13 @@ class OverlayController extends Notifier<bool> {
       // Nothing running; ignore.
     }
     await FlutterOverlayWindow.showOverlay(
-      // Height must scale with the configurable font size, otherwise large
-      // sizes clip at the bottom (the plugin takes physical pixels here).
-      height: _heightPxFor(ref.read(overlayFontSizeProvider)),
+      // Height must scale with the configurable font size AND the actual
+      // line length (long lines wrap to two rows); the plugin takes
+      // physical pixels here.
+      height: _heightPxFor(
+        ref.read(overlayFontSizeProvider),
+        _currentLine(),
+      ),
       alignment: OverlayAlignment.bottomCenter,
       enableDrag: true,
       positionGravity: PositionGravity.auto,
@@ -137,13 +160,54 @@ class OverlayController extends Notifier<bool> {
     return dp < 8 ? 8 : dp;
   }
 
-  /// Overlay window height in physical pixels for a given font size:
-  /// line height (1.25×) plus container padding and screen margins.
-  static int _heightPxFor(double fontSize) {
+  /// Overlay window height in physical pixels for [fontSize] rendering
+  /// [line]: estimates wrapped line count (the overlay Text allows 2 lines)
+  /// so long lyrics grow the window instead of clipping at the bottom.
+  static int _heightPxFor(double fontSize, String line) {
     final views = WidgetsBinding.instance.platformDispatcher.views;
     final dpr = views.isNotEmpty ? views.first.devicePixelRatio : 3.0;
-    final logical = fontSize * 1.25 + 34;
+    final screenWidthDp = views.isNotEmpty
+        ? views.first.physicalSize.width / dpr
+        : 360.0;
+    // Horizontal chrome: 16 margin ×2 + 20 padding ×2.
+    final maxTextWidthDp =
+        (screenWidthDp - 72).clamp(120.0, screenWidthDp);
+    // Weighted length: CJK/full-width ≈ 1 em, ASCII ≈ 0.55 em.
+    var em = line.isEmpty ? 1.0 : 0.0;
+    for (final rune in line.runes) {
+      em += rune > 0x2e7f ? 1.0 : 0.55;
+    }
+    final charsPerLine = (maxTextWidthDp / fontSize).clamp(1.0, 1000.0);
+    final textLines = (em / charsPerLine).ceil().clamp(1, 2);
+    // 1.25× line height × wrapped lines + 10 vertical padding ×2 + buffer.
+    final logical = textLines * fontSize * 1.25 + 34;
     return (logical * dpr).round().clamp(120, 800);
+  }
+
+  static int _screenWidthPx() {
+    final views = WidgetsBinding.instance.platformDispatcher.views;
+    return views.isNotEmpty
+        ? views.first.physicalSize.width.round()
+        : 0;
+  }
+
+  /// Resizes the overlay window when the required height for [line]
+  /// changes (long lines wrap to two rows and need more room).
+  Future<void> _syncHeight(double fontSize, String line) async {
+    final height = _heightPxFor(fontSize, line);
+    if (height == _lastHeightPx) {
+      return;
+    }
+    final width = _screenWidthPx();
+    if (width <= 0) {
+      return;
+    }
+    try {
+      await FlutterOverlayWindow.resizeOverlay(width, height, true);
+      _lastHeightPx = height;
+    } on Exception {
+      // Window not up yet; the next push retries.
+    }
   }
 
   /// Re-fits the overlay window after a font-size change so larger sizes
@@ -152,50 +216,25 @@ class OverlayController extends Notifier<bool> {
     if (!state) {
       return;
     }
-    try {
-      final views = WidgetsBinding.instance.platformDispatcher.views;
-      final width = views.isNotEmpty
-          ? views.first.physicalSize.width.round()
-          : 0;
-      if (width > 0) {
-        await FlutterOverlayWindow.resizeOverlay(
-          width,
-          _heightPxFor(fontSize),
-          true,
-        );
-      }
-    } on Exception {
-      // Window not up yet or plugin refused; next _show() picks it up.
-    }
+    final line = _currentLine();
+    await _syncHeight(fontSize, line);
+    await pushCurrentLine();
   }
 
   Future<void> pushCurrentLine() async {
     if (!state) {
       return;
     }
-    final lyrics = ref.read(lyricsControllerProvider);
-    final player = ref.read(playerControllerProvider);
-    final song = player.currentSong;
+    final fontSize = ref.read(overlayFontSizeProvider);
+    final line = _currentLine();
+    final song = ref.read(playerControllerProvider).currentSong;
 
-    String line;
-    switch (lyrics.status) {
-      case LyricsStatus.synced:
-        final index = lyrics.activeIndex;
-        line = index >= 0 && index < lyrics.document.lines.length
-            ? lyrics.document.lines[index].text.replaceAll('\n', ' ')
-            : '…';
-      case LyricsStatus.unsynced:
-        line = '（纯文本歌词，暂不支持同步滚动）';
-      case LyricsStatus.none ||
-          LyricsStatus.idle ||
-          LyricsStatus.loading:
-        line = '';
-    }
+    await _syncHeight(fontSize, line);
 
     final payload = jsonEncode({
       'title': song?.title ?? '',
       'line': line,
-      'fontSize': ref.read(overlayFontSizeProvider),
+      'fontSize': fontSize,
     });
     if (payload == _lastPayload) {
       return;
