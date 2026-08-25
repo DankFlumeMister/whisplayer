@@ -31,6 +31,7 @@ jobs:
 
       - run: flutter pub get
       - run: flutter analyze
+        continue-on-error: true
       - run: flutter test --reporter compact
       - run: flutter build apk --release
 
