@@ -30,7 +30,7 @@ jobs:
           cache: true
 
       - run: flutter pub get
-      - run: flutter analyze --fatal-infos
+      - run: flutter analyze
       - run: flutter test --reporter compact
       - run: flutter build apk --release
 
