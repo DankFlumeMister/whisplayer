@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:whisplayer/core/locale/language_controller.dart';
 import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/features/player/application/lyrics_controller.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
 import 'package:whisplayer/features/settings/application/theme_font_size.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 const _keyEnabled = 'desktop_lyrics.enabled';
 
@@ -39,12 +41,21 @@ class OverlayController extends Notifier<bool> {
             ? lyrics.document.lines[index].text.replaceAll('\n', ' ')
             : '…';
       case LyricsStatus.unsynced:
-        return '（纯文本歌词，暂不支持同步滚动）';
+        return _overlayL10n().overlayUnsynced;
       case LyricsStatus.none ||
           LyricsStatus.idle ||
           LyricsStatus.loading:
         return '';
     }
+  }
+
+  /// Resolves AppLocalizations for the overlay window, honoring the
+  /// manually selected language (falling back to the system locale).
+  AppLocalizations _overlayL10n() {
+    final saved = ref.read(languageControllerProvider).locale;
+    final locale =
+        saved ?? WidgetsBinding.instance.platformDispatcher.locale;
+    return lookupAppLocalizations(locale);
   }
 
   Future<void> _restore() async {
@@ -117,8 +128,8 @@ class OverlayController extends Notifier<bool> {
       alignment: OverlayAlignment.bottomCenter,
       enableDrag: true,
       positionGravity: PositionGravity.auto,
-      overlayTitle: 'Whisplayer 桌面歌词',
-      overlayContent: '正在显示桌面歌词',
+      overlayTitle: _overlayL10n().overlayTitle,
+      overlayContent: _overlayL10n().overlayContent,
       // The plugin double-scales the default bottom offset (pixel status-bar
       // height fed through dpToPx), pushing the window fully off-screen on
       // high-density devices. Supply an explicit upward offset in dp so the
@@ -234,7 +245,9 @@ class OverlayController extends Notifier<bool> {
     final payload = jsonEncode({
       'title': song?.title ?? '',
       'line': line,
-      'fontSize': fontSize,
+      'fontSize': ref.read(overlayFontSizeProvider),
+      'locale':
+          ref.read(languageControllerProvider).locale?.toString(),
     });
     if (payload == _lastPayload) {
       return;

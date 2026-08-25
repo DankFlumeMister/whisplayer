@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/domain/entities/album.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 class AlbumsTab extends ConsumerWidget {
   const AlbumsTab({super.key});
@@ -16,12 +17,13 @@ class AlbumsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(libraryRepositoryProvider);
+    final l10n = AppLocalizations.of(context);
     return StreamBuilder<List<Album>>(
       stream: repo.watchAlbums(),
       builder: (context, snapshot) {
         final albums = snapshot.data ?? const <Album>[];
         if (albums.isEmpty) {
-          return const Center(child: Text('暂无专辑'));
+          return Center(child: Text(l10n.noAlbums));
         }
         return MasonryGridView.count(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 140),
@@ -49,6 +51,7 @@ class _AlbumCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     return GestureDetector(
       onTap: () => context.push('/library/album/${album.id}'),
       child: Column(
@@ -80,9 +83,9 @@ class _AlbumCard extends StatelessWidget {
           ),
           Text(
             [
-              album.artistName ?? '未知艺术家',
+              album.artistName ?? l10n.unknownArtist,
               if (album.year != null) '${album.year}',
-              '${album.songCount}首',
+              l10n.countSongs(album.songCount),
             ].join(' · '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

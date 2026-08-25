@@ -175,6 +175,7 @@ void main() {
   ) async {
     engine = _FakeAudioEngine();
     settings = _FakeSettingsRepository();
+    tester.platformDispatcher.localesTestValue = const [Locale('zh')];
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -188,6 +189,7 @@ void main() {
       ),
     );
     await tester.pump();
+    await tester.idle();
     await tester.pump(const Duration(milliseconds: 200));
   }
 

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 class SongsPage extends ConsumerWidget {
   const SongsPage({super.key});
@@ -13,8 +14,9 @@ class SongsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(libraryRepositoryProvider);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('歌曲')),
+      appBar: AppBar(title: Text(l10n.songsPageTitle)),
       body: StreamBuilder<List<Song>>(
         stream: repo.watchLocalSongs(
           sort: SongSort.title,
@@ -29,7 +31,7 @@ class SongsPage extends ConsumerWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (songs.isEmpty) {
-            return const Center(child: Text('还没有歌曲，先去设置里扫描音乐吧'));
+            return Center(child: Text(l10n.songsPageEmpty));
           }
           return ListView.builder(
             itemCount: songs.length,

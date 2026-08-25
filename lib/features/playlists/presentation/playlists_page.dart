@@ -4,22 +4,24 @@ import 'package:go_router/go_router.dart';
 
 import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/domain/entities/playlist.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 class PlaylistsPage extends ConsumerWidget {
   const PlaylistsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final repo = ref.watch(playlistRepositoryProvider);
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverAppBar.large(
-            title: const Text('播放列表'),
+            title: Text(l10n.playlistTab),
             actions: [
               IconButton(
                 icon: const Icon(Icons.add),
-                tooltip: '新建播放列表',
+                tooltip: l10n.createPlaylistTooltip,
                 onPressed: () => _showCreateDialog(context, ref),
               ),
             ],
@@ -38,7 +40,7 @@ class PlaylistsPage extends ConsumerWidget {
                       ListTile(
                         leading: const Icon(Icons.queue_music_outlined),
                         title: Text(playlist.name),
-                        subtitle: Text('${playlist.songCount} 首'),
+                        subtitle: Text(l10n.countSongs(playlist.songCount)),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => context.push(
                           '/playlists/${playlist.id}'
@@ -59,20 +61,21 @@ class PlaylistsPage extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final nameController = TextEditingController();
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('新建播放列表'),
+        title: Text(l10n.createPlaylistTitle),
         content: TextField(
           controller: nameController,
           autofocus: true,
-          decoration: const InputDecoration(labelText: '名称'),
+          decoration: InputDecoration(labelText: l10n.nameLabel),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('取消'),
+            child: Text(l10n.cancelAction),
           ),
           FilledButton(
             onPressed: () async {
@@ -88,7 +91,7 @@ class PlaylistsPage extends ConsumerWidget {
               }
               Navigator.pop(dialogContext);
             },
-            child: const Text('创建'),
+            child: Text(l10n.createAction),
           ),
         ],
       ),
@@ -101,6 +104,7 @@ class _EmptyHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Column(
@@ -113,12 +117,12 @@ class _EmptyHint extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            '还没有播放列表',
+            l10n.noPlaylists,
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 4),
           Text(
-            '本地歌曲和云端歌曲都可以加入',
+            l10n.playlistsHint,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),

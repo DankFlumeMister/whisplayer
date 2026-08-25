@@ -38,7 +38,7 @@ class SubsonicClient {
   static String normalizeBaseUrl(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) {
-      throw const FormatException('服务器地址不能为空');
+      throw const FormatException('Server address is required');
     }
     final match =
         RegExp(r'^(https?):/{0,3}(.*)$', caseSensitive: false)
@@ -49,7 +49,7 @@ class SubsonicClient {
       rest = rest.substring(1);
     }
     if (rest.isEmpty) {
-      throw FormatException('服务器地址缺少主机名：$raw');
+      throw FormatException('Missing host in server address: $raw');
     }
     var url = '$scheme://$rest';
     if (url.endsWith('/')) {
@@ -60,7 +60,7 @@ class SubsonicClient {
     }
     final uri = Uri.tryParse(url);
     if (uri == null || uri.host.isEmpty) {
-      throw FormatException('无法解析服务器地址：$raw');
+      throw FormatException('Cannot parse server address: $raw');
     }
     return url;
   }

@@ -53,7 +53,7 @@ class WhisAudioHandler extends BaseAudioHandler {
       config: const AudioServiceConfig(
         androidNotificationChannelId:
             'com.whisplayer.app.playback',
-        androidNotificationChannelName: 'Whisplayer 播放',
+        androidNotificationChannelName: 'Whisplayer',
       ),
     );
   }

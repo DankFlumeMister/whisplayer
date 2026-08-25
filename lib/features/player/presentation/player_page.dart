@@ -15,6 +15,7 @@ import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/features/player/application/lyrics_controller.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
 import 'package:whisplayer/features/settings/application/overlay_controller.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 enum _LyricsMode { hidden, docked, immersive }
 
@@ -26,6 +27,9 @@ class PlayerPage extends ConsumerStatefulWidget {
 }
 
 class _PlayerPageState extends ConsumerState<PlayerPage> {
+  AppLocalizations get l10n => AppLocalizations.of(context);
+
+
   // Fired after LongPressStart (~500ms into the hold), so total hold ≈ 1.5s.
   static const _holdDuration = Duration(milliseconds: 1000);
   static const _returnDelay = Duration(milliseconds: 1500);
@@ -112,7 +116,9 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
     final snap = state.snapshot;
 
     if (song == null) {
-      return const Scaffold(body: Center(child: Text('队列为空')));
+      return Scaffold(
+        body: Center(child: Text(l10n.queueEmpty)),
+      );
     }
 
     final position = _dragValue ?? snap.positionMs.toDouble();
@@ -262,7 +268,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           MainAxisAlignment.spaceEvenly,
                       children: [
                         IconButton(
-                          tooltip: '循环模式',
+                          tooltip: l10n.tooltipLoopMode,
                           iconSize: 28,
                           padding: const EdgeInsets.all(12),
                           onPressed: () => ref
@@ -272,7 +278,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                         ),
                         _OverlayToggleButton(scheme: scheme),
                         IconButton(
-                          tooltip: '播放队列',
+                          tooltip: l10n.tooltipQueue,
                           iconSize: 28,
                           padding: const EdgeInsets.all(12),
                           onPressed: () => _showQueue(context),
@@ -396,28 +402,28 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            tooltip: '返回封面',
+            tooltip: l10n.tooltipBackToCover,
             visualDensity: VisualDensity.compact,
             onPressed: () =>
                 setState(() => _lyricsMode = _LyricsMode.hidden),
             icon: const Icon(Icons.album_outlined, size: 20),
           ),
           IconButton(
-            tooltip: '缩小字体',
+            tooltip: l10n.tooltipFontSmaller,
             visualDensity: VisualDensity.compact,
             onPressed: () =>
                 controller.setFontScale(lyricsState.fontScale - 0.1),
             icon: const Icon(Icons.text_decrease_rounded, size: 20),
           ),
           IconButton(
-            tooltip: '放大字体',
+            tooltip: l10n.tooltipFontBigger,
             visualDensity: VisualDensity.compact,
             onPressed: () =>
                 controller.setFontScale(lyricsState.fontScale + 0.1),
             icon: const Icon(Icons.text_increase_rounded, size: 20),
           ),
           IconButton(
-            tooltip: '文字对齐',
+            tooltip: l10n.tooltipAlign,
             visualDensity: VisualDensity.compact,
             onPressed: () {
               final next = LyricAlign
@@ -428,7 +434,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
             icon: Icon(alignIcon, size: 20),
           ),
           IconButton(
-            tooltip: '导入歌词文件',
+            tooltip: l10n.importLyricsFile,
             visualDensity: VisualDensity.compact,
             onPressed: () => unawaited(_importLyrics()),
             icon: const Icon(Icons.upload_file_outlined, size: 20),
@@ -453,12 +459,12 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               const SizedBox(height: 8),
-              const Text('暂无歌词'),
+              Text(l10n.noLyrics),
               const SizedBox(height: 12),
               FilledButton.tonalIcon(
                 onPressed: () => unawaited(_importLyrics()),
                 icon: const Icon(Icons.upload_file_outlined),
-                label: const Text('导入歌词文件'),
+                label: Text(l10n.importLyricsFile),
               ),
             ],
           ),
@@ -651,7 +657,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
         ),
         const SizedBox(height: 6),
         Text(
-          '解锁',
+          l10n.unlock,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Colors.white.withValues(alpha: 0.7),
               ),
@@ -767,8 +773,11 @@ class _OverlayToggleButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final enabled = ref.watch(overlayControllerProvider);
+    final l10n = AppLocalizations.of(context);
     return IconButton(
-      tooltip: enabled ? '关闭桌面歌词' : '开启桌面歌词',
+      tooltip: enabled
+          ? l10n.tooltipOverlayOn
+          : l10n.tooltipOverlayOff,
       iconSize: 28,
       padding: const EdgeInsets.all(12),
       onPressed: () async {
@@ -778,7 +787,7 @@ class _OverlayToggleButton extends ConsumerWidget {
             .setEnabled(value: !enabled);
         if (!applied) {
           messenger.showSnackBar(
-            const SnackBar(content: Text('需要“显示在应用上层”权限才能开启桌面歌词')),
+            SnackBar(content: Text(l10n.desktopLyricsPermission)),
           );
         }
       },
@@ -796,6 +805,7 @@ class _UnsyncedBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -808,7 +818,7 @@ class _UnsyncedBanner extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              '未检测到时间轴，仅显示文本',
+              l10n.unsyncedBanner,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),

@@ -6,15 +6,17 @@ import 'package:whisplayer/data/subsonic/subsonic_client.dart';
 import 'package:whisplayer/data/subsonic/subsonic_models.dart';
 import 'package:whisplayer/domain/entities/remote_server.dart';
 import 'package:whisplayer/domain/repositories/remote_server_repository.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 class RemoteServersPage extends ConsumerWidget {
   const RemoteServersPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final repo = ref.watch(remoteServerRepositoryProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('远程音乐服务器')),
+      appBar: AppBar(title: Text(l10n.remoteServersEntry)),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddDialog(context, ref),
         child: const Icon(Icons.add),
@@ -24,9 +26,7 @@ class RemoteServersPage extends ConsumerWidget {
         builder: (context, snapshot) {
           final servers = snapshot.data ?? const <RemoteServer>[];
           if (servers.isEmpty) {
-            return const Center(
-              child: Text('还没有服务器，点右下角添加'),
-            );
+            return Center(child: Text(l10n.noServerYet));
           }
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
@@ -43,7 +43,7 @@ class RemoteServersPage extends ConsumerWidget {
                     subtitle: Text('${server.baseUrl} · ${server.username}'),
                     trailing: IconButton(
                       icon: const Icon(Icons.delete_outline),
-                      tooltip: '删除',
+                      tooltip: l10n.tooltipDelete,
                       onPressed: () =>
                           _confirmDelete(context, ref, repo, server),
                     ),
@@ -62,19 +62,20 @@ class RemoteServersPage extends ConsumerWidget {
     RemoteServerRepository repo,
     RemoteServer server,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('删除 ${server.name}？'),
-        content: const Text('将同时删除已保存的密码。'),
+        title: Text(l10n.deleteServerTitle(server.name)),
+        content: Text(l10n.deleteServerBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancelAction),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('删除'),
+            child: Text(l10n.deleteAction),
           ),
         ],
       ),
@@ -85,6 +86,7 @@ class RemoteServersPage extends ConsumerWidget {
   }
 
   Future<void> _showAddDialog(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     final nameController = TextEditingController();
     final urlController = TextEditingController();
     final userController = TextEditingController();
@@ -98,32 +100,33 @@ class RemoteServersPage extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('添加服务器'),
+          title: Text(l10n.addServerTitle),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: '名称'),
+                  decoration:
+                      InputDecoration(labelText: l10n.fieldName),
                 ),
                 TextField(
                   controller: urlController,
-                  decoration: const InputDecoration(
-                    labelText: '服务器地址',
-                    hintText: '例：192.168.XX.XX:4533',
+                  decoration: InputDecoration(
+                    labelText: l10n.fieldAddress,
+                    hintText: l10n.fieldAddressHint,
                   ),
                   keyboardType: TextInputType.url,
                 ),
                 TextField(
                   controller: userController,
                   decoration:
-                      const InputDecoration(labelText: '用户名'),
+                      InputDecoration(labelText: l10n.fieldUsername),
                 ),
                 TextField(
                   controller: passwordController,
                   decoration:
-                      const InputDecoration(labelText: '密码'),
+                      InputDecoration(labelText: l10n.fieldPassword),
                   obscureText: true,
                 ),
                 if (feedback != null)
@@ -165,6 +168,8 @@ class RemoteServersPage extends ConsumerWidget {
                         hint = null;
                       });
                       final (ok, message) = await _testConnection(
+                        context,
+                        ref,
                         urlController.text,
                         userController.text,
                         passwordController.text,
@@ -175,7 +180,9 @@ class RemoteServersPage extends ConsumerWidget {
                       setState(() {
                         testing = false;
                         feedback = ok ? null : message;
-                        hint = ok ? null : _loopbackHint(urlController.text);
+                        hint = ok
+                            ? null
+                            : _loopbackHint(l10n, urlController.text);
                       });
                     },
               child: testing
@@ -184,7 +191,7 @@ class RemoteServersPage extends ConsumerWidget {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('测试连接'),
+                  : Text(l10n.testConnection),
             ),
             FilledButton(
               onPressed: testing || saving
@@ -197,7 +204,7 @@ class RemoteServersPage extends ConsumerWidget {
                           url.isEmpty ||
                           user.isEmpty ||
                           passwordController.text.isEmpty) {
-                        setState(() => feedback = '请填写全部字段');
+                        setState(() => feedback = l10n.fillAllFields);
                         return;
                       }
                       try {
@@ -220,17 +227,15 @@ class RemoteServersPage extends ConsumerWidget {
                       }
                       if (_isLoopback(url)) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              '注意：127.0.0.1 指向手机自身，通常应填写电脑的局域网 IP',
-                            ),
-                            duration: Duration(seconds: 5),
+                          SnackBar(
+                            content: Text(l10n.loopbackSnackBar),
+                            duration: const Duration(seconds: 5),
                           ),
                         );
                       }
                       Navigator.pop(dialogContext);
                     },
-              child: const Text('保存'),
+              child: Text(l10n.saveAction),
             ),
           ],
         ),
@@ -239,14 +244,17 @@ class RemoteServersPage extends ConsumerWidget {
   }
 
   Future<(bool, String)> _testConnection(
+    BuildContext context,
+    WidgetRef ref,
     String rawUrl,
     String username,
     String password,
   ) async {
+    final l10n = AppLocalizations.of(context);
     if (rawUrl.trim().isEmpty ||
         username.trim().isEmpty ||
         password.isEmpty) {
-      return (false, '请填写地址、用户名和密码');
+      return (false, l10n.fillAllFieldsFull);
     }
     final String normalized;
     try {
@@ -255,10 +263,7 @@ class RemoteServersPage extends ConsumerWidget {
       return (false, e.message);
     }
     if (_isLoopback(normalized)) {
-      return (
-        false,
-        '127.0.0.1 / localhost 指向手机自身，无法访问电脑上的服务器；请填写电脑的局域网 IP（ipconfig 查看）',
-      );
+      return (false, l10n.loopbackTest);
     }
     try {
       final client = SubsonicClient(
@@ -267,11 +272,11 @@ class RemoteServersPage extends ConsumerWidget {
         password: password,
       );
       await client.ping();
-      return (true, '连接成功 ✓ 将使用 $normalized');
+      return (true, l10n.testOk(normalized));
     } on SubsonicException catch (e) {
-      return (false, '服务器响应错误：${e.message}');
+      return (false, l10n.serverErrorMsg(e.message));
     } on Exception catch (_) {
-      return (false, '无法连接到 $normalized（请检查地址与手机网络）');
+      return (false, l10n.cannotConnectMsg(normalized));
     }
   }
 
@@ -282,10 +287,10 @@ class RemoteServersPage extends ConsumerWidget {
         host == '::1';
   }
 
-  static String? _loopbackHint(String url) {
+  static String? _loopbackHint(AppLocalizations l10n, String url) {
     if (!_isLoopback(url)) {
       return null;
     }
-    return '127.0.0.1 指向手机自身，无法访问电脑上的服务器；请填写电脑的局域网 IP';
+    return l10n.loopbackHint;
   }
 }

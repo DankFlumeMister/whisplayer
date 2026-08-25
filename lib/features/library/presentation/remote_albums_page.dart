@@ -9,6 +9,7 @@ import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/data/subsonic/subsonic_models.dart';
 import 'package:whisplayer/domain/entities/remote_server.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 const String _keyActiveServer = 'remote.active_server_id';
 const int _pageSize = 60;
@@ -68,7 +69,9 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
         return;
       }
       if (servers.isEmpty) {
-        setState(() => _error = '尚未添加服务器');
+        setState(() {
+          _error = AppLocalizations.of(context).noServer;
+        });
         return;
       }
       final savedId =
@@ -98,7 +101,8 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
       if (!mounted) {
         return;
       }
-      setState(() => _error = '加载失败：$e');
+      final l10n = AppLocalizations.of(context);
+      setState(() => _error = '${l10n.loadFailedPrefix}: $e');
     }
   }
 
@@ -159,8 +163,9 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
         return;
       }
       if (localAlbumId == null) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('该专辑没有歌曲')),
+          SnackBar(content: Text(l10n.albumNoSongs)),
         );
         return;
       }
@@ -169,8 +174,9 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
       if (!mounted) {
         return;
       }
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('打开失败：$e')),
+        SnackBar(content: Text('${l10n.openFailedPrefix}: $e')),
       );
     } finally {
       if (mounted) {
@@ -187,9 +193,12 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
     if (server == null) {
       return;
     }
+    final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('正在同步「${remoteSong.title}」…')));
+      ..showSnackBar(
+        SnackBar(content: Text(l10n.syncingTo(remoteSong.title))),
+      );
     try {
       final song = await ref
           .read(remoteLibraryServiceProvider)
@@ -209,7 +218,7 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('播放失败：$e')),
+        SnackBar(content: Text('${l10n.playFailedPrefix}: $e')),
       );
     }
   }
@@ -218,13 +227,14 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
     BuildContext context,
     SearchController controller,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final query = controller.text.trim();
     final server = _server;
     if (query.isEmpty) {
-      return const [_Hint(text: '输入关键字模糊搜索云端歌曲与专辑')];
+      return [_Hint(text: l10n.searchHintCloud)];
     }
     if (server == null) {
-      return const [_Hint(text: '尚未添加服务器')];
+      return [_Hint(text: l10n.noServer)];
     }
     final SubsonicSearchResult result;
     try {
@@ -232,14 +242,14 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
           .read(remoteLibraryServiceProvider)
           .search(server.id, query);
     } on Exception catch (e) {
-      return [_Hint(text: '搜索失败：$e')];
+      return [_Hint(text: '${l10n.searchFailedPrefix}: $e')];
     }
     if (result.albums.isEmpty && result.songs.isEmpty) {
-      return const [_Hint(text: '未找到匹配的内容')];
+      return [_Hint(text: l10n.noCloudMatch)];
     }
     return [
       if (result.albums.isNotEmpty)
-        const _SectionLabel(title: '专辑'),
+        _SectionLabel(title: l10n.sectionAlbums),
       for (final album in result.albums)
         ListTile(
           leading: const Icon(Icons.album_outlined),
@@ -251,7 +261,7 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
           },
         ),
       if (result.songs.isNotEmpty)
-        const _SectionLabel(title: '歌曲'),
+        _SectionLabel(title: l10n.sectionSongs),
       for (final song in result.songs)
         ListTile(
           leading: const Icon(Icons.music_note_outlined),
@@ -269,13 +279,14 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: _server == null || _servers.length < 2
-            ? Text(_server?.name ?? '云端音乐')
+            ? Text(_server?.name ?? l10n.cloudFallback)
             : PopupMenuButton<RemoteServer>(
                 initialValue: _server,
-                tooltip: '切换服务器',
+                tooltip: l10n.tooltipSwitchServer,
                 onSelected: (server) =>
                     unawaited(_switchServer(server)),
                 itemBuilder: (context) => [
@@ -301,7 +312,7 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
         actions: [
           SearchAnchor(
             builder: (context, controller) => IconButton(
-              tooltip: '搜索',
+              tooltip: l10n.tooltipSearch,
               onPressed: controller.openView,
               icon: const Icon(Icons.search_rounded),
             ),
@@ -309,7 +320,7 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            tooltip: '管理服务器',
+            tooltip: l10n.tooltipManageServers,
             onPressed: () async {
               await context.push('/settings/remote-servers');
               await _load();
@@ -317,7 +328,7 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: '刷新',
+            tooltip: l10n.tooltipRefresh,
             onPressed: _load,
           ),
         ],
@@ -327,6 +338,7 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
   }
 
   Widget _buildBody(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     if (_error != null) {
       return Center(
         child: Column(
@@ -336,7 +348,7 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
             const SizedBox(height: 12),
             FilledButton.tonal(
               onPressed: () {
-                if (_error == '尚未添加服务器') {
+                if (_error == l10n.noServer) {
                   unawaited(
                     context.push('/settings/remote-servers'),
                   );
@@ -345,7 +357,7 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
                 }
               },
               child: Text(
-                _error == '尚未添加服务器' ? '去添加' : '重试',
+                _error == l10n.noServer ? l10n.goAdd : l10n.retry,
               ),
             ),
           ],
@@ -357,7 +369,7 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
       return const Center(child: CircularProgressIndicator());
     }
     if (albums.isEmpty) {
-      return const Center(child: Text('服务器上没有专辑'));
+      return Center(child: Text(l10n.serverNoAlbums));
     }
     final itemCount = albums.length + (_hasMore ? 1 : 0);
     return GridView.builder(

@@ -4,20 +4,30 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
+import 'package:whisplayer/l10n/app_localizations.dart';
+
 class OverlayPayload {
   const OverlayPayload({
     this.title = '',
     this.line = '',
     this.fontSize = 22,
+    this.locale,
   });
 
   factory OverlayPayload.decode(dynamic raw) {
     try {
       final map = jsonDecode(raw as String) as Map<String, dynamic>;
+      final localeTag = map['locale'] as String?;
+      final parts = localeTag?.split('_') ?? const <String>[];
       return OverlayPayload(
         title: map['title'] as String? ?? '',
         line: map['line'] as String? ?? '',
         fontSize: (map['fontSize'] as num?)?.toDouble() ?? 22,
+        locale: parts.isEmpty
+            ? null
+            : (parts.length > 1
+                ? Locale(parts.first, parts.sublist(1).join('_'))
+                : Locale(parts.first)),
       );
     } on FormatException catch (_) {
       return const OverlayPayload();
@@ -27,6 +37,7 @@ class OverlayPayload {
   final String title;
   final String line;
   final double fontSize;
+  final Locale? locale;
 }
 
 class DesktopLyricsOverlayApp extends StatelessWidget {
@@ -51,9 +62,14 @@ class _OverlayHome extends StatefulWidget {
 class _OverlayHomeState extends State<_OverlayHome> {
   StreamSubscription<dynamic>? _sub;
   OverlayPayload _payload = const OverlayPayload(
-    title: 'Whisplayer 桌面歌词',
-    line: '等待播放…',
+    line: '…',
   );
+
+  AppLocalizations get _l10n {
+    final locale = _payload.locale ??
+        WidgetsBinding.instance.platformDispatcher.locale;
+    return lookupAppLocalizations(locale);
+  }
 
   @override
   void initState() {
@@ -74,26 +90,29 @@ class _OverlayHomeState extends State<_OverlayHome> {
 
   @override
   Widget build(BuildContext context) {
-    final line = _payload.line.isEmpty ? '♪' : _payload.line;
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        alignment: Alignment.center,
-        child: Text(
-          line,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: line == '♪' ? Colors.white70 : Colors.white,
-            fontSize: _payload.fontSize,
-            fontWeight: FontWeight.w700,
-            height: 1.25,
-            shadows: _lyricShadows(),
+    final line = _payload.line.isEmpty ? _l10n.overlayWaiting : _payload.line;
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          alignment: Alignment.center,
+          child: Text(
+            line,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: line == '♪' ? Colors.white70 : Colors.white,
+              fontSize: _payload.fontSize,
+              fontWeight: FontWeight.w700,
+              height: 1.25,
+              shadows: _lyricShadows(),
+            ),
           ),
         ),
       ),

@@ -9,6 +9,7 @@ import 'package:whisplayer/data/subsonic/subsonic_models.dart';
 import 'package:whisplayer/domain/entities/playlist.dart';
 import 'package:whisplayer/domain/entities/source_type.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 class PlaylistDetailPage extends ConsumerStatefulWidget {
   const PlaylistDetailPage({
@@ -32,10 +33,11 @@ class _PlaylistDetailPageState extends ConsumerState<PlaylistDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final repo = ref.watch(playlistRepositoryProvider);
     return Scaffold(
-      appBar: _editing ? _buildEditingAppBar() : _buildNormalAppBar(),
-      bottomNavigationBar: _editing ? _buildEditBottomBar() : null,
+      appBar: _editing ? _buildEditingAppBar(l10n) : _buildNormalAppBar(l10n),
+      bottomNavigationBar: _editing ? _buildEditBottomBar(l10n) : null,
       body: StreamBuilder<List<PlaylistEntry>>(
         stream: repo.watchEntries(widget.playlistId),
         builder: (context, snapshot) {
@@ -48,7 +50,9 @@ class _PlaylistDetailPageState extends ConsumerState<PlaylistDetailPage> {
           }
           if (entries.isEmpty) {
             return Center(
-              child: Text(_editing ? '列表为空' : '列表为空，点右上角添加歌曲'),
+              child: Text(
+                _editing ? l10n.detailEmptyEditing : l10n.detailEmpty,
+              ),
             );
           }
           return ListView.builder(
@@ -75,7 +79,8 @@ class _PlaylistDetailPageState extends ConsumerState<PlaylistDetailPage> {
                 subtitle: Text(
                   [
                     song.artistName ?? '',
-                    if (song.sourceType == SourceType.remote) '云端',
+                    if (song.sourceType == SourceType.remote)
+                      l10n.cloudTag,
                   ]
                       .where((part) => part.isNotEmpty)
                       .join(' · '),
@@ -119,39 +124,39 @@ class _PlaylistDetailPageState extends ConsumerState<PlaylistDetailPage> {
     });
   }
 
-  PreferredSizeWidget _buildNormalAppBar() {
+  PreferredSizeWidget _buildNormalAppBar(AppLocalizations l10n) {
     return AppBar(
       title: Text(widget.name),
       actions: [
         IconButton(
           icon: const Icon(Icons.add),
-          tooltip: '添加歌曲',
+          tooltip: l10n.addSongsTooltip,
           onPressed: () => _showAddSheet(context, ref),
         ),
         IconButton(
           icon: const Icon(Icons.edit_outlined),
-          tooltip: '编辑歌曲',
+          tooltip: l10n.editTooltip,
           onPressed: () => setState(() => _editing = true),
         ),
         IconButton(
           icon: const Icon(Icons.delete_outline),
-          tooltip: '删除播放列表',
+          tooltip: l10n.deletePlaylistTooltip,
           onPressed: () => _confirmDelete(context, ref),
         ),
       ],
     );
   }
 
-  PreferredSizeWidget _buildEditingAppBar() {
+  PreferredSizeWidget _buildEditingAppBar(AppLocalizations l10n) {
     final allSelected =
         _latestEntries.isNotEmpty &&
             _selectedEntryIds.length == _latestEntries.length;
     return AppBar(
       leading: BackButton(onPressed: _exitEditing),
-      title: Text('已选 ${_selectedEntryIds.length} 首'),
+      title: Text(l10n.selectedCount(_selectedEntryIds.length)),
       actions: [
         IconButton(
-          tooltip: allSelected ? '取消全选' : '全选',
+          tooltip: allSelected ? l10n.deselectAll : l10n.selectAll,
           onPressed: () {
             setState(() {
               if (allSelected) {
@@ -170,7 +175,7 @@ class _PlaylistDetailPageState extends ConsumerState<PlaylistDetailPage> {
           ),
         ),
         IconButton(
-          tooltip: '完成',
+          tooltip: l10n.doneAction,
           onPressed: _exitEditing,
           icon: const Icon(Icons.check_rounded),
         ),
@@ -178,7 +183,7 @@ class _PlaylistDetailPageState extends ConsumerState<PlaylistDetailPage> {
     );
   }
 
-  Widget? _buildEditBottomBar() {
+  Widget? _buildEditBottomBar(AppLocalizations l10n) {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -189,13 +194,14 @@ class _PlaylistDetailPageState extends ConsumerState<PlaylistDetailPage> {
           onPressed:
               _selectedEntryIds.isEmpty ? null : _deleteSelected,
           icon: const Icon(Icons.delete_outline),
-          label: Text('删除所选 (${_selectedEntryIds.length})'),
+          label: Text(l10n.deleteSelected(_selectedEntryIds.length)),
         ),
       ),
     );
   }
 
   Future<void> _deleteSelected() async {
+    final l10n = AppLocalizations.of(context);
     final ids = _selectedEntryIds.toList();
     await ref.read(playlistRepositoryProvider).removeEntries(ids);
     if (!mounted) {
@@ -203,7 +209,7 @@ class _PlaylistDetailPageState extends ConsumerState<PlaylistDetailPage> {
     }
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('已移除 ${ids.length} 首')));
+      ..showSnackBar(SnackBar(content: Text(l10n.removedCount(ids.length))));
     _exitEditing();
   }
 
@@ -211,19 +217,20 @@ class _PlaylistDetailPageState extends ConsumerState<PlaylistDetailPage> {
     BuildContext context,
     WidgetRef ref,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('删除播放列表？'),
-        content: Text('「${widget.name}」将被删除，歌曲不受影响。'),
+        title: Text(l10n.deletePlaylistTitle),
+        content: Text(l10n.deletePlaylistBody(widget.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('取消'),
+            child: Text(l10n.cancelAction),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('删除'),
+            child: Text(l10n.deleteAction),
           ),
         ],
       ),
@@ -240,6 +247,7 @@ class _PlaylistDetailPageState extends ConsumerState<PlaylistDetailPage> {
   }
 
   Future<void> _showAddSheet(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context);
     var mode = 0;
     final filterController = TextEditingController();
     await showModalBottomSheet<void>(
@@ -259,9 +267,9 @@ class _PlaylistDetailPageState extends ConsumerState<PlaylistDetailPage> {
             child: Column(
               children: [
                 SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment(value: 0, label: Text('本地歌曲')),
-                    ButtonSegment(value: 1, label: Text('云端歌曲')),
+                  segments: [
+                    ButtonSegment(value: 0, label: Text(l10n.localSongs)),
+                    ButtonSegment(value: 1, label: Text(l10n.cloudSongs)),
                   ],
                   selected: {mode},
                   onSelectionChanged: (selection) =>
@@ -272,18 +280,19 @@ class _PlaylistDetailPageState extends ConsumerState<PlaylistDetailPage> {
                   child: TextField(
                     controller: filterController,
                     decoration: InputDecoration(
-                      labelText:
-                          mode == 0 ? '过滤本地歌曲' : '模糊搜索云端歌曲',
+                      labelText: mode == 0
+                          ? l10n.filterLocal
+                          : l10n.searchCloud,
                       prefixIcon: const Icon(Icons.search_rounded),
                       suffixIcon: mode == 1
                           ? IconButton(
                               icon: const Icon(Icons.arrow_forward),
-                              tooltip: '搜索',
+                              tooltip: l10n.tooltipSearch,
                               onPressed: () => setState(() {}),
                             )
                           : null,
                     ),
-                    onChanged: (value) => setState(() {}),
+                    onChanged: (_) => setState(() {}),
                   ),
                 ),
                 Expanded(
@@ -314,6 +323,7 @@ class _LocalPicker extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final repo = ref.watch(libraryRepositoryProvider);
     return FutureBuilder(
       future: repo.getAllSongs(),
@@ -333,7 +343,7 @@ class _LocalPicker extends ConsumerWidget {
                 song,
         ];
         if (songs.isEmpty) {
-          return const Center(child: Text('没有匹配的本地歌曲'));
+          return Center(child: Text(l10n.noLocalMatch));
         }
         return ListView.builder(
           itemCount: songs.length,
@@ -362,6 +372,7 @@ class _LocalPicker extends ConsumerWidget {
     int songId,
     String title,
   ) async {
+    final l10n = AppLocalizations.of(context);
     await ref
         .read(playlistRepositoryProvider)
         .addSong(playlistId, songId);
@@ -370,7 +381,7 @@ class _LocalPicker extends ConsumerWidget {
     }
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('已加入「$title」')));
+      ..showSnackBar(SnackBar(content: Text(l10n.addedTo(title))));
   }
 }
 
@@ -397,6 +408,7 @@ class _CloudPickerState extends ConsumerState<_CloudPicker> {
   }
 
   Future<void> _search() async {
+    final l10n = AppLocalizations.of(context);
     setState(() {
       _error = null;
       _results = null;
@@ -409,11 +421,11 @@ class _CloudPickerState extends ConsumerState<_CloudPicker> {
         return;
       }
       if (servers.isEmpty) {
-        setState(() => _error = '未连接到服务器');
+        setState(() => _error = l10n.notConnected);
         return;
       }
       if (widget.query.isEmpty) {
-        setState(() => _error = '输入关键字后点搜索');
+        setState(() => _error = l10n.typeToSearchCloud);
         return;
       }
       final result = await ref
@@ -427,7 +439,7 @@ class _CloudPickerState extends ConsumerState<_CloudPicker> {
       if (!mounted) {
         return;
       }
-      setState(() => _error = '搜索失败：$e');
+      setState(() => _error = '${l10n.searchFailedPrefix}: $e');
     } finally {
       if (mounted) {
         setState(() => _searching = false);
@@ -439,6 +451,7 @@ class _CloudPickerState extends ConsumerState<_CloudPicker> {
     if (_added.contains(remoteSong.id)) {
       return;
     }
+    final l10n = AppLocalizations.of(context);
     setState(() => _added.add(remoteSong.id));
     try {
       final servers =
@@ -460,13 +473,13 @@ class _CloudPickerState extends ConsumerState<_CloudPicker> {
       }
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text('已加入「${song.title}」')));
+        ..showSnackBar(SnackBar(content: Text(l10n.addedTo(song.title))));
     } on Exception catch (e) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('添加失败：$e')),
+        SnackBar(content: Text('${l10n.addFailedPrefix}: $e')),
       );
     } finally {
       if (mounted) {
@@ -477,6 +490,7 @@ class _CloudPickerState extends ConsumerState<_CloudPicker> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (_error != null) {
       return Center(
         child: Column(
@@ -485,12 +499,16 @@ class _CloudPickerState extends ConsumerState<_CloudPicker> {
             Text(_error!, textAlign: TextAlign.center),
             const SizedBox(height: 12),
             FilledButton.tonal(
-              onPressed: _error == '未连接到服务器'
+              onPressed: _error == l10n.notConnected
                   ? () => unawaited(
                         context.push('/settings/remote-servers'),
                       )
                   : _search,
-              child: Text(_error == '未连接到服务器' ? '去连接' : '重试'),
+              child: Text(
+                _error == l10n.notConnected
+                    ? l10n.goConnect
+                    : l10n.retry,
+              ),
             ),
           ],
         ),
@@ -501,7 +519,7 @@ class _CloudPickerState extends ConsumerState<_CloudPicker> {
       return const Center(child: CircularProgressIndicator());
     }
     if (results.isEmpty) {
-      return const Center(child: Text('未找到匹配的歌曲'));
+      return Center(child: Text(l10n.noCloudMatch));
     }
     return ListView.builder(
       itemCount: results.length,

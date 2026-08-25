@@ -117,7 +117,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     path: ':id',
                     builder: (context, state) => PlaylistDetailPage(
                       playlistId: int.parse(state.pathParameters['id']!),
-                      name: state.uri.queryParameters['name'] ?? '播放列表',
+                      name: state.uri.queryParameters['name'] ??
+                          AppLocalizations.of(context).playlistTab,
                     ),
                   ),
                 ],

@@ -5,6 +5,7 @@ import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/features/library/presentation/widgets/song_list_view.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 class FolderDetailPage extends ConsumerStatefulWidget {
   const FolderDetailPage({required this.dirPath, super.key});
@@ -44,6 +45,7 @@ class _FolderDetailPageState extends ConsumerState<FolderDetailPage> {
   Widget build(BuildContext context) {
     final songs = _songs;
     final notifier = ref.read(playerControllerProvider.notifier);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.dirPath.split('/').last),
@@ -51,13 +53,13 @@ class _FolderDetailPageState extends ConsumerState<FolderDetailPage> {
       body: songs == null
           ? const Center(child: CircularProgressIndicator())
           : songs.isEmpty
-              ? const Center(child: Text('该文件夹暂无歌曲'))
+              ? Center(child: Text(l10n.folderDetailEmpty))
               : SongListView(songs: songs),
       floatingActionButton: songs != null && songs.isNotEmpty
           ? FloatingActionButton.extended(
               onPressed: () => notifier.playSongs(songs),
               icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text('播放'),
+              label: Text(l10n.play),
             )
           : null,
     );

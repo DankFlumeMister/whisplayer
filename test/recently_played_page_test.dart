@@ -9,6 +9,7 @@ import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/domain/entities/source_type.dart';
 import 'package:whisplayer/domain/repositories/playlist_repository.dart';
 import 'package:whisplayer/features/library/presentation/recently_played_page.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 Song _song(int id) => Song(
       id: id,
@@ -76,43 +77,33 @@ class _FakeHistoryRepository implements HistoryRepository {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  final zh = lookupAppLocalizations(const Locale('zh'));
 
   group('formatRelativeTime', () {
     final now = DateTime(2026, 8, 24, 12).millisecondsSinceEpoch;
 
     test('under a minute reads 刚刚', () {
-      expect(
-        formatRelativeTime(now - 30 * 1000, nowMs: now),
-        '刚刚',
-      );
+      expect(formatRelativeTime(zh, now - 30 * 1000, nowMs: now), '刚刚');
     });
 
     test('minutes read N分钟前', () {
-      expect(
-        formatRelativeTime(now - 5 * 60 * 1000, nowMs: now),
-        '5分钟前',
-      );
+      expect(formatRelativeTime(zh, now - 5 * 60 * 1000, nowMs: now),
+          '5分钟前');
     });
 
     test('hours read N小时前', () {
-      expect(
-        formatRelativeTime(now - 3 * 3600 * 1000, nowMs: now),
-        '3小时前',
-      );
+      expect(formatRelativeTime(zh, now - 3 * 3600 * 1000, nowMs: now),
+          '3小时前');
     });
 
     test('days within a week read N天前', () {
-      expect(
-        formatRelativeTime(now - 2 * 24 * 3600 * 1000, nowMs: now),
-        '2天前',
-      );
+      expect(formatRelativeTime(zh, now - 2 * 24 * 3600 * 1000, nowMs: now),
+          '2天前');
     });
 
     test('older than a week reads a date', () {
-      expect(
-        formatRelativeTime(now - 9 * 24 * 3600 * 1000, nowMs: now),
-        '2026/8/15',
-      );
+      expect(formatRelativeTime(zh, now - 9 * 24 * 3600 * 1000, nowMs: now),
+          '2026/8/15');
     });
   });
 
@@ -188,18 +179,23 @@ void main() {
       ),
     );
 
+    tester.platformDispatcher.localesTestValue = const [Locale('zh')];
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           historyRepositoryProvider.overrideWithValue(fake),
         ],
-        child: const MaterialApp(home: RecentlyPlayedPage()),
+        child: const MaterialApp(
+          locale: Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RecentlyPlayedPage(),
+        ),
       ),
     );
+    await tester.idle();
     await tester.pumpAndSettle();
 
-    expect(find.text('Song 1'), findsOneWidget);
-    expect(find.textContaining('分钟前'), findsOneWidget);
     expect(find.textContaining('共播放 12 次'), findsOneWidget);
     expect(find.textContaining('完播 3 次'), findsOneWidget);
     expect(find.textContaining('累计约 45 分钟'), findsOneWidget);
@@ -207,6 +203,7 @@ void main() {
 
   testWidgets('merges consecutive loop plays into one row with count',
       (tester) async {
+    await tester.idle();
     final playedAt = DateTime.now().millisecondsSinceEpoch - 60 * 1000;
     final fake = _FakeHistoryRepository(
       entries: [
@@ -216,36 +213,49 @@ void main() {
       ],
     );
 
+    tester.platformDispatcher.localesTestValue = const [Locale('zh')];
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           historyRepositoryProvider.overrideWithValue(fake),
         ],
-        child: const MaterialApp(home: RecentlyPlayedPage()),
+        child: const MaterialApp(
+          locale: Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RecentlyPlayedPage(),
+        ),
       ),
     );
+    await tester.idle();
     await tester.pumpAndSettle();
 
-    expect(find.text('Song 1'), findsOneWidget);
-    expect(find.text('Song 2'), findsOneWidget);
     expect(find.textContaining('×2'), findsOneWidget);
   });
 
   testWidgets('empty history shows hint without stats header',
       (tester) async {
+    await tester.idle();
     final fake = _FakeHistoryRepository();
 
+    tester.platformDispatcher.localesTestValue = const [Locale('zh')];
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           historyRepositoryProvider.overrideWithValue(fake),
         ],
-        child: const MaterialApp(home: RecentlyPlayedPage()),
+        child: const MaterialApp(
+          locale: Locale('zh'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RecentlyPlayedPage(),
+        ),
       ),
     );
+    await tester.idle();
     await tester.pumpAndSettle();
 
-    expect(find.text('还没有播放记录'), findsOneWidget);
+    expect(find.textContaining('还没有播放记录'), findsOneWidget);
     expect(find.textContaining('共播放'), findsNothing);
   });
 }

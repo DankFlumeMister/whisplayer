@@ -11,6 +11,7 @@ import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/domain/repositories/playlist_repository.dart';
 import 'package:whisplayer/features/library/presentation/widgets/song_list_view.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 const int _mergeGapToleranceMs = 15000;
 
@@ -46,23 +47,27 @@ bool _belongsTo(List<PlayHistoryEntry> group, PlayHistoryEntry entry) {
   return gap <= newest.playedMs + _mergeGapToleranceMs;
 }
 
-String formatRelativeTime(int playedAtMs, {int? nowMs}) {
+String formatRelativeTime(
+  AppLocalizations l10n,
+  int playedAtMs, {
+  int? nowMs,
+}) {
   final now = DateTime.fromMillisecondsSinceEpoch(
     nowMs ?? DateTime.now().millisecondsSinceEpoch,
   );
   final played = DateTime.fromMillisecondsSinceEpoch(playedAtMs);
   final diff = now.difference(played);
   if (diff.inMinutes < 1) {
-    return '刚刚';
+    return l10n.relJust;
   }
   if (diff.inMinutes < 60) {
-    return '${diff.inMinutes}分钟前';
+    return l10n.relMinutesAgo(diff.inMinutes);
   }
   if (diff.inHours < 24) {
-    return '${diff.inHours}小时前';
+    return l10n.relHoursAgo(diff.inHours);
   }
   if (diff.inDays < 7) {
-    return '${diff.inDays}天前';
+    return l10n.relDaysAgo(diff.inDays);
   }
   return '${played.year}/${played.month}/${played.day}';
 }
@@ -73,8 +78,9 @@ class RecentlyPlayedPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(historyRepositoryProvider);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('最近播放')),
+      appBar: AppBar(title: Text(l10n.recentTitle)),
       body: StreamBuilder<List<PlayHistoryEntry>>(
         stream: repo.watchRecent(limit: 50),
         builder: (context, snapshot) {
@@ -83,7 +89,7 @@ class RecentlyPlayedPage extends ConsumerWidget {
           }
           final entries = snapshot.data ?? const <PlayHistoryEntry>[];
           if (entries.isEmpty) {
-            return const Center(child: Text('还没有播放记录'));
+            return Center(child: Text(l10n.recentEmpty));
           }
           final groups = groupConsecutivePlays(entries);
           final songs = <Song>[];
@@ -103,7 +109,10 @@ class RecentlyPlayedPage extends ConsumerWidget {
                     final group = groups[index];
                     final entry = group.first;
                     final song = entry.song;
-                    final extra = formatRelativeTime(entry.playedAtMs);
+                    final extra = formatRelativeTime(
+                      l10n,
+                      entry.playedAtMs,
+                    );
                     final mergedExtra = group.length > 1
                         ? '$extra · ×${group.length}'
                         : extra;
@@ -160,6 +169,7 @@ class _StatsHeader extends StatelessWidget {
           return const SizedBox.shrink();
         }
         final minutes = stats.totalPlayedMs ~/ 60000;
+        final l10n = AppLocalizations.of(context);
         return Card(
           margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: Padding(
@@ -171,9 +181,11 @@ class _StatsHeader extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    '共播放 ${stats.totalPlays} 次'
-                    ' · 完播 ${stats.completedPlays} 次'
-                    ' · 累计约 $minutes 分钟',
+                    l10n.statsHeader(
+                      stats.totalPlays,
+                      stats.completedPlays,
+                      minutes,
+                    ),
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),

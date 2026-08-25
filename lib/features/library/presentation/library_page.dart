@@ -11,6 +11,7 @@ import 'package:whisplayer/features/library/presentation/artists_tab.dart';
 import 'package:whisplayer/features/library/presentation/folders_tab.dart';
 import 'package:whisplayer/features/library/presentation/widgets/song_list_view.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 class LibraryPage extends ConsumerStatefulWidget {
   const LibraryPage({super.key});
@@ -26,7 +27,12 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
   final SearchController _searchController = SearchController();
   int _searchToken = 0;
 
-  static const _views = ['歌曲', '专辑', '艺术家', '文件夹'];
+  static List<String> _viewLabels(AppLocalizations l10n) => [
+        l10n.songsTab,
+        l10n.albumsTab,
+        l10n.artistsTab,
+        l10n.foldersTab,
+      ];
 
   @override
   void dispose() {
@@ -37,6 +43,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
   @override
   Widget build(BuildContext context) {
     final repo = ref.watch(libraryRepositoryProvider);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxScrolled) => [
@@ -44,7 +51,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
             pinned: true,
             actions: [
               IconButton(
-                tooltip: '最近播放',
+                tooltip: l10n.tooltipRecent,
                 onPressed: () =>
                     unawaited(context.push('/library/recently-played')),
                 icon: const Icon(Icons.history_rounded),
@@ -53,7 +60,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                 SearchAnchor(
                   searchController: _searchController,
                   builder: (context, controller) => IconButton(
-                    tooltip: '搜索',
+                    tooltip: l10n.tooltipSearch,
                     onPressed: controller.openView,
                     icon: const Icon(Icons.search_rounded),
                   ),
@@ -61,12 +68,12 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                 ),
               if (_viewIndex == 0)
                 IconButton(
-                  tooltip: '排序',
+                  tooltip: l10n.tooltipSort,
                   onPressed: _showSortMenu,
                   icon: const Icon(Icons.sort_rounded),
                 ),
               IconButton(
-                tooltip: '设置',
+                tooltip: l10n.settingsTitle,
                 onPressed: () => unawaited(context.push('/settings')),
                 icon: const Icon(Icons.settings_outlined),
               ),
@@ -78,8 +85,8 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: SegmentedButton<int>(
                 segments: [
-                  for (var i = 0; i < _views.length; i++)
-                    ButtonSegment(value: i, label: Text(_views[i])),
+                  for (var i = 0; i < _viewLabels(l10n).length; i++)
+                    ButtonSegment(value: i, label: Text(_viewLabels(l10n)[i])),
                 ],
                 selected: {_viewIndex},
                 showSelectedIcon: false,
@@ -101,7 +108,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                   builder: (context, snapshot) {
                     final songs = snapshot.data ?? const <Song>[];
                     if (songs.isEmpty) {
-                      return const _EmptyHint(text: '暂无歌曲，先去设置里扫描音乐吧');
+                      return _EmptyHint(text: l10n.libraryEmpty);
                     }
                     return RefreshIndicator(
                       onRefresh: () async {},
@@ -128,9 +135,10 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
     BuildContext context,
     SearchController controller,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final query = controller.text.trim();
     if (query.isEmpty) {
-      return const [_SearchHint(text: '输入关键字搜索歌曲')];
+      return [_SearchHint(text: l10n.searchHintInput)];
     }
     final token = ++_searchToken;
     final List<Song> songs;
@@ -140,7 +148,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
           .searchLocalSongs(query);
     } on Exception {
       if (token == _searchToken) {
-        return const [_SearchHint(text: '搜索失败，请稍后重试')];
+        return [_SearchHint(text: l10n.searchHintFailure)];
       }
       return const <Widget>[];
     }
@@ -148,7 +156,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
       return const <Widget>[];
     }
     if (songs.isEmpty) {
-      return const [_SearchHint(text: '未找到匹配的歌曲')];
+      return [_SearchHint(text: l10n.searchHintNoMatch)];
     }
     return [
       for (var i = 0; i < songs.length; i++)
@@ -177,13 +185,14 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
   }
 
   void _showSortMenu() {
+    final l10n = AppLocalizations.of(context);
     final labels = {
-      SongSort.title: '标题',
-      SongSort.artist: '艺术家',
-      SongSort.album: '专辑',
-      SongSort.addedAt: '最近添加',
-      SongSort.playCount: '播放次数',
-      SongSort.duration: '时长',
+      SongSort.title: l10n.sortTitle,
+      SongSort.artist: l10n.sortArtist,
+      SongSort.album: l10n.sortAlbum,
+      SongSort.addedAt: l10n.sortAddedAt,
+      SongSort.playCount: l10n.sortPlayCount,
+      SongSort.duration: l10n.sortDuration,
     };
     showModalBottomSheet<void>(
       context: context,
@@ -204,7 +213,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                   },
                 ),
               SwitchListTile(
-                title: const Text('降序'),
+                title: Text(l10n.sortDescending),
                 value: _descending,
                 onChanged: (v) {
                   setState(() => _descending = v);

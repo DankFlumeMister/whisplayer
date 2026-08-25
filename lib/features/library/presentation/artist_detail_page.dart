@@ -6,6 +6,7 @@ import 'package:whisplayer/domain/entities/artist.dart';
 import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/features/library/presentation/widgets/song_list_view.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 class ArtistDetailPage extends ConsumerStatefulWidget {
   const ArtistDetailPage({required this.artistId, this.artist, super.key});
@@ -30,9 +31,10 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.artist?.name ?? '艺术家'),
+        title: Text(widget.artist?.name ?? l10n.artistFallback),
       ),
       body: FutureBuilder<List<Song>>(
         future: _songsFuture,
@@ -43,7 +45,7 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
           final songs = snapshot.data!;
           final name = widget.artist?.name ??
               songs.firstOrNull?.artistName ??
-              '未知艺术家';
+              l10n.unknownArtist;
           return Column(
             children: [
               Padding(
@@ -73,7 +75,7 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${songs.length} 首歌曲',
+                            l10n.countSongs(songs.length),
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium
@@ -94,7 +96,7 @@ class _ArtistDetailPageState extends ConsumerState<ArtistDetailPage> {
                         .read(playerControllerProvider.notifier)
                         .playSongs(songs),
                 icon: const Icon(Icons.play_arrow_rounded),
-                label: const Text('播放全部'),
+                label: Text(l10n.playAll),
               ),
               const Divider(height: 20),
               Expanded(child: SongListView(songs: songs)),

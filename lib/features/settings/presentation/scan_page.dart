@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'package:whisplayer/domain/entities/scan_progress.dart';
 import 'package:whisplayer/features/settings/application/scan_controller.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 class ScanPage extends ConsumerWidget {
   const ScanPage({super.key});
@@ -16,9 +17,10 @@ class ScanPage extends ConsumerWidget {
     final state = ref.watch(scanControllerProvider);
     final config = ref.watch(scanConfigProvider);
     final scheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('扫描音乐')),
+      appBar: AppBar(title: Text(l10n.scanTitle)),
       body: config.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
@@ -37,7 +39,9 @@ class ScanPage extends ConsumerWidget {
                       if (!await _ensureAudioPermission()) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('需要音频文件访问权限')),
+                            SnackBar(
+              content: Text(l10n.needAudioPermission),
+            ),
                           );
                         }
                         return;
@@ -48,14 +52,18 @@ class ScanPage extends ConsumerWidget {
                           .start(cfg);
                       if (!allFiles && context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('未授予"所有文件访问"，歌词旁注文件（.lrc 等）将无法读取'),
+                          SnackBar(
+                            content: Text(l10n.allFilesDenied),
                           ),
                         );
                       }
                     },
               icon: Icon(state.isScanning ? Icons.stop : Icons.refresh),
-              label: Text(state.isScanning ? '停止' : '开始扫描'),
+              label: Text(
+                state.isScanning
+                    ? l10n.stopAction
+                    : l10n.startScanAction,
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor:
                     state.isScanning ? scheme.error : scheme.primary,
@@ -94,6 +102,7 @@ class _ProgressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final progress = state.progress;
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -102,7 +111,7 @@ class _ProgressCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_summary(progress), style: theme.textTheme.titleMedium),
+            Text(_summary(l10n, progress), style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
             // While scanning: determinate when a fraction is known,
             // indeterminate during the directory walk. Once finished the
@@ -125,28 +134,27 @@ class _ProgressCard extends StatelessWidget {
                 style: theme.textTheme.bodySmall,
               )
             else
-              Text('尚未扫描', style: theme.textTheme.bodySmall),
+              Text(l10n.notScannedYet, style: theme.textTheme.bodySmall),
           ],
         ),
       ),
     );
   }
 
-  String _summary(ScanProgress? p) {
+  String _summary(AppLocalizations l10n, ScanProgress? p) {
     if (p == null) {
-      return '准备就绪';
+      return l10n.ready;
     }
     switch (p.phase) {
       case ScanPhase.done:
-        return '完成：新增 ${p.addedCount} · 更新 ${p.updatedCount}'
-            ' · 移除 ${p.removedCount}';
+        return l10n.scanDone(p.addedCount, p.updatedCount, p.removedCount);
       case ScanPhase.error:
-        return p.message ?? '扫描出错';
+        return p.message ?? l10n.scanError;
       case ScanPhase.walking:
-        return '正在遍历目录…';
+        return l10n.walking;
       case ScanPhase.parsing:
       case ScanPhase.cleanup:
-        return '正在解析…';
+        return l10n.parsing;
     }
   }
 }
@@ -158,6 +166,7 @@ class _DirectoryCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -181,7 +190,7 @@ class _DirectoryCard extends ConsumerWidget {
               ),
             ListTile(
               leading: const Icon(Icons.add),
-              title: const Text('添加目录'),
+              title: Text(l10n.addDirectory),
               onTap: () => _addDir(ref),
             ),
           ],

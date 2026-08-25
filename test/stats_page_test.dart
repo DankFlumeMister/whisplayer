@@ -9,6 +9,7 @@ import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/domain/entities/source_type.dart';
 import 'package:whisplayer/domain/repositories/library_repository.dart';
 import 'package:whisplayer/features/library/presentation/stats_page.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 Song _song(int id, {required int playCount, int totalPlayMs = 0}) => Song(
       id: id,
@@ -148,17 +149,19 @@ void main() {
   });
 
   group('formatTotalDuration', () {
+    final zh = lookupAppLocalizations(const Locale('zh'));
+
     test('under an hour reads minutes', () {
-      expect(formatTotalDuration(45 * 60 * 1000), '约 45 分钟');
+      expect(formatTotalDuration(zh, 45 * 60 * 1000), '约 45 分钟');
     });
 
     test('whole hours read without remainder', () {
-      expect(formatTotalDuration(2 * 3600 * 1000), '约 2 小时');
+      expect(formatTotalDuration(zh, 2 * 3600 * 1000), '约 2 小时');
     });
 
     test('mixed reads hours and minutes', () {
       expect(
-        formatTotalDuration(90 * 60 * 1000),
+        formatTotalDuration(zh, 90 * 60 * 1000),
         '1 小时 30 分钟',
       );
     });
@@ -174,14 +177,21 @@ void main() {
       ],
     );
 
+    tester.platformDispatcher.localesTestValue = const [Locale('zh')];
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           libraryRepositoryProvider.overrideWithValue(library),
         ],
-        child: const MaterialApp(home: StatsPage()),
+        child: const MaterialApp(
+            locale: Locale('zh'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: StatsPage(),
+          )
       ),
     );
+    await tester.idle();
     await tester.pumpAndSettle();
 
     expect(find.text('最常播放'), findsOneWidget);
@@ -198,14 +208,21 @@ void main() {
       songs: [_song(1, playCount: 0)],
     );
 
+    tester.platformDispatcher.localesTestValue = const [Locale('zh')];
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           libraryRepositoryProvider.overrideWithValue(library),
         ],
-        child: const MaterialApp(home: StatsPage()),
+        child: const MaterialApp(
+            locale: Locale('zh'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: StatsPage(),
+          )
       ),
     );
+    await tester.idle();
     await tester.pumpAndSettle();
 
     expect(find.text('还没有统计数据，先去听几首歌吧'), findsOneWidget);

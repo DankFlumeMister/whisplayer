@@ -8,6 +8,7 @@ import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/features/library/presentation/widgets/song_list_view.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
+import 'package:whisplayer/l10n/app_localizations.dart';
 
 const int _topLimit = 10;
 
@@ -27,17 +28,17 @@ List<Song> topPlayedSongs(List<Song> songs, {required int limit}) {
 }
 
 /// Formats total listening time as 约N分钟 / 约N小时 / N小时M分钟.
-String formatTotalDuration(int ms) {
+String formatTotalDuration(AppLocalizations l10n, int ms) {
   final minutes = ms ~/ 60000;
   if (minutes < 60) {
-    return '约 $minutes 分钟';
+    return l10n.totalDurMinutes(minutes);
   }
   final hours = minutes ~/ 60;
   final remainder = minutes % 60;
   if (remainder == 0) {
-    return '约 $hours 小时';
+    return l10n.totalDurHours(hours);
   }
-  return '$hours 小时 $remainder 分钟';
+  return l10n.totalDurHoursMinutes(hours, remainder);
 }
 
 class StatsPage extends ConsumerWidget {
@@ -46,8 +47,9 @@ class StatsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final libraryRepo = ref.watch(libraryRepositoryProvider);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('播放统计')),
+      appBar: AppBar(title: Text(l10n.statsTitle)),
       body: StreamBuilder<List<Song>>(
         stream: libraryRepo.watchSongs(),
         builder: (context, snapshot) {
@@ -57,20 +59,20 @@ class StatsPage extends ConsumerWidget {
           final songs = snapshot.data ?? const <Song>[];
           final top = topPlayedSongs(songs, limit: _topLimit);
           if (top.isEmpty) {
-            return const Center(child: Text('还没有统计数据，先去听几首歌吧'));
+            return Center(child: Text(l10n.statsEmpty));
           }
           return ListView(
             padding: const EdgeInsets.fromLTRB(0, 4, 0, 140),
             children: [
-              const _SectionHeader(title: '最常播放'),
+              _SectionHeader(title: l10n.topPlayed),
               for (var i = 0; i < top.length; i++)
                 SongRow(
                   key: ValueKey(top[i].id),
                   song: top[i],
                   songs: top,
                   index: i,
-                  subtitleExtra: '播放 ${top[i].playCount} 次',
-                  trailingText: formatTotalDuration(top[i].totalPlayMs),
+                  subtitleExtra: l10n.playCountLabel(top[i].playCount),
+                  trailingText: formatTotalDuration(l10n, top[i].totalPlayMs),
                   onTap: () => _playFrom(context, ref, top, i),
                 ),
             ],
