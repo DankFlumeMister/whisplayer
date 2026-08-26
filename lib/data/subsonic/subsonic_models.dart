@@ -8,6 +8,7 @@ class SubsonicAlbum {
     this.songCount = 0,
     this.duration = 0,
     this.year,
+    this.created = '',
   });
 
   factory SubsonicAlbum.fromJson(Map<String, dynamic> json) {
@@ -19,6 +20,7 @@ class SubsonicAlbum {
       songCount: (json['songCount'] as num?)?.toInt() ?? 0,
       duration: (json['duration'] as num?)?.toInt() ?? 0,
       year: (json['year'] as num?)?.toInt(),
+      created: json['created'] as String? ?? '',
     );
   }
 
@@ -29,6 +31,9 @@ class SubsonicAlbum {
   final int songCount;
   final int duration;
   final int? year;
+
+  /// ISO-8601 creation timestamp; lexicographic order equals time order.
+  final String created;
 }
 
 /// A parsed song entry from the Subsonic `getAlbum` endpoint.

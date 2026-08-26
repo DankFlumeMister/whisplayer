@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'package:whisplayer/data/navidrome/navidrome_client.dart';
+import 'package:whisplayer/data/navidrome/navidrome_models.dart';
 import 'package:whisplayer/data/remote/remote_library_service.dart';
 import 'package:whisplayer/data/subsonic/subsonic_client.dart';
 import 'package:whisplayer/data/subsonic/subsonic_models.dart';
@@ -86,6 +88,7 @@ class _FakeWriter implements LibraryWriterRepository {
 
 class _FakeLibrary implements LibraryRepository {
   final Map<int, Song> byId = <int, Song>{};
+  final Map<int, List<Song>> byAlbum = <int, List<Song>>{};
 
   @override
   Future<Song?> getSong(int songId) async => byId[songId];
@@ -115,7 +118,8 @@ class _FakeLibrary implements LibraryRepository {
   Future<Song?> getLastPlayedSong() async => null;
 
   @override
-  Future<List<Song>> songsByAlbum(int albumId) async => [];
+  Future<List<Song>> songsByAlbum(int albumId) async =>
+      byAlbum[albumId] ?? const <Song>[];
 
   @override
   Future<List<Song>> songsByArtist(int artistId) async => [];
@@ -238,6 +242,82 @@ void main() {
         ),
       );
       expect(result, isNull);
+    });
+  });
+
+  group('syncAlbumSongs', () {
+    test('returns the whole local album queue after syncing', () async {
+      library.byId[100] = Song(
+        id: 100,
+        path: 'subsonic://$serverId/so-1',
+        sourceType: SourceType.remote,
+        title: 'Track A',
+        fileName: 'Track A.flac',
+        format: 'flac',
+        durationMs: 180000,
+        fileSizeBytes: 1,
+        addedAtMs: 0,
+        modifiedAtMs: 0,
+        playCount: 0,
+        skipCount: 0,
+        totalPlayMs: 0,
+        lastPositionMs: 0,
+        isFavorite: false,
+        albumId: 77,
+      );
+      library.byAlbum[77] = [library.byId[100]!];
+
+      final svc = RemoteLibraryService(
+        servers,
+        writer,
+        library,
+        clientFactory: (baseUrl, username, password) => SubsonicClient(
+          baseUrl: baseUrl,
+          username: username,
+          password: password,
+          client: MockClient(
+            (_) async => http.Response(
+              jsonEncode({
+                'subsonic-response': {
+                  'status': 'ok',
+                  'album': {
+                    'id': 'al-1',
+                    'name': 'Album One',
+                    'song': [
+                      {'id': 'so-1', 'title': 'Track A'},
+                      {'id': 'so-2', 'title': 'Track B'},
+                    ],
+                  },
+                },
+              }),
+              200,
+            ),
+          ),
+        ),
+      );
+
+      const remote = SubsonicSong(
+        id: 'so-1',
+        title: 'Track A',
+        albumId: 'al-1',
+      );
+      final songs = await svc.syncAlbumSongs(
+        server: servers.servers.first,
+        remoteSong: remote,
+      );
+
+      expect(songs.map((s) => s.id), [100]);
+      expect(writer.saved, hasLength(2));
+    });
+
+    test('returns empty when the remote song has no album', () async {
+      const remote = SubsonicSong(id: 'so-x', title: 'X');
+      final songs = await service.syncAlbumSongs(
+        server: servers.servers.first,
+        remoteSong: remote,
+      );
+      expect(songs, isEmpty);
+      expect(writer.saved, isEmpty);
     });
   });
 
@@ -465,6 +545,170 @@ void main() {
         isFavorite: false,
       );
       expect(await service.fetchLyricsText(local), isNull);
+    });
+  });
+
+  group('navidrome folder index', () {
+    RemoteLibraryService navServiceWith(MockClient client) =>
+        RemoteLibraryService(
+          servers,
+          writer,
+          library,
+          navidromeClientFactory: (baseUrl, username, password) =>
+              NavidromeClient(
+                baseUrl: baseUrl,
+                username: username,
+                password: password,
+                client: client,
+              ),
+        );
+
+    test('groups by top folder, sorts and caches the sweep', () async {
+      var sweeps = 0;
+      final svc = navServiceWith(
+        MockClient((request) async {
+          if (request.method == 'POST') {
+            return http.Response(jsonEncode({'token': 'jwt'}), 200);
+          }
+          sweeps++;
+          return http.Response(
+            jsonEncode([
+              {
+                'id': 's1',
+                'path': 'RJ00000002/a.flac',
+                'title': 'A',
+                'suffix': 'flac',
+                'duration': 10,
+                'size': 1,
+                'hasCoverArt': false,
+              },
+              {
+                'id': 's2',
+                'path': 'RJ00000001/sub/b.mp3',
+                'title': 'B',
+                'artist': '[Unknown Artist]',
+                'album': '[Unknown Album]',
+                'suffix': 'mp3',
+                'duration': 20,
+                'size': 2,
+                'hasCoverArt': true,
+              },
+              {
+                'id': 's3',
+                'path': 'RJ00000001/c.flac',
+                'title': 'C',
+                'suffix': 'flac',
+                'duration': 30,
+                'size': 3,
+                'hasCoverArt': false,
+              },
+            ]),
+            200,
+            headers: {'x-total-count': '3'},
+          );
+        }),
+      );
+
+      final folders = await svc.indexFolders(serverId);
+
+      expect(sweeps, 1);
+      expect(folders, hasLength(2));
+      expect(folders[0].name, 'RJ00000001');
+      expect(folders[0].songCount, 2);
+      expect(folders[0].coverSongId, 's2');
+      expect(folders[1].name, 'RJ00000002');
+      expect(folders[1].songCount, 1);
+
+      final cached = await svc.indexFolders(serverId);
+      expect(cached.map((f) => f.name), ['RJ00000001', 'RJ00000002']);
+      expect(sweeps, 1);
+    });
+
+    test('folderSongs flattens sub-directories in path order', () async {
+      final svc = navServiceWith(
+        MockClient((request) async {
+          if (request.method == 'POST') {
+            return http.Response(jsonEncode({'token': 'jwt'}), 200);
+          }
+          return http.Response(
+            jsonEncode([
+              {
+                'id': 's3',
+                'path': 'RJ00000009/c.flac',
+                'title': 'C',
+                'suffix': 'flac',
+                'duration': 30,
+                'size': 3,
+                'hasCoverArt': false,
+              },
+              {
+                'id': 's4',
+                'path': 'RJ00000009/sub/d.flac',
+                'title': 'D',
+                'suffix': 'flac',
+                'duration': 40,
+                'size': 4,
+                'hasCoverArt': false,
+              },
+            ]),
+            200,
+            headers: {'x-total-count': '2'},
+          );
+        }),
+      );
+
+      final songs = await svc.folderSongs(serverId, 'RJ00000009');
+      expect(songs.map((s) => s.id), ['s3', 's4']);
+    });
+  });
+
+  group('syncSingleSong', () {
+    test('maps fields and strips placeholder tags', () async {
+      library.byId[100] = Song(
+        id: 100,
+        path: 'subsonic://$serverId/sf-9',
+        sourceType: SourceType.remote,
+        title: 'Track W',
+        fileName: 'track.wav',
+        format: 'wav',
+        durationMs: 61000,
+        fileSizeBytes: 12345,
+        addedAtMs: 0,
+        modifiedAtMs: 0,
+        playCount: 0,
+        skipCount: 0,
+        totalPlayMs: 0,
+        lastPositionMs: 0,
+        isFavorite: false,
+      );
+
+      const remote = NavidromeSong(
+        id: 'sf-9',
+        path: 'RJ777/本編/track.wav',
+        title: 'Track W',
+        album: '[Unknown Album]',
+        artist: '[Unknown Artist]',
+        suffix: 'wav',
+        durationSec: 61,
+        sizeBytes: 12345,
+        hasCoverArt: false,
+      );
+
+      final song = await service.syncSingleSong(
+        server: servers.servers.first,
+        remote: remote,
+      );
+
+      expect(song, isNotNull);
+      expect(song!.id, 100);
+      final saved = writer.saved.single;
+      expect(saved.path, 'subsonic://$serverId/sf-9');
+      expect(saved.sourceType, SourceType.remote);
+      expect(saved.fileName, 'track.wav');
+      expect(saved.albumTitle, isNull);
+      expect(saved.artistName, isNull);
+      expect(saved.durationMs, 61000);
+      expect(saved.fileSizeBytes, 12345);
     });
   });
 }
