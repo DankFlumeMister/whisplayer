@@ -268,13 +268,29 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
                           MainAxisAlignment.spaceEvenly,
                       children: [
                         IconButton(
+                          tooltip: l10n.tooltipShuffle,
+                          iconSize: 28,
+                          padding: const EdgeInsets.all(12),
+                          onPressed: () => ref
+                              .read(playerControllerProvider.notifier)
+                              .setShuffle(
+                                enabled: !state.shuffleEnabled,
+                              ),
+                          icon: Icon(
+                            Icons.shuffle_rounded,
+                            color: state.shuffleEnabled
+                                ? scheme.primary
+                                : null,
+                          ),
+                        ),
+                        IconButton(
                           tooltip: l10n.tooltipLoopMode,
                           iconSize: 28,
                           padding: const EdgeInsets.all(12),
                           onPressed: () => ref
                               .read(playerControllerProvider.notifier)
                               .cycleLoopMode(),
-                          icon: Icon(_loopIcon(state.loopMode)),
+                          icon: _loopIcon(state.loopMode, scheme),
                         ),
                         _OverlayToggleButton(scheme: scheme),
                         IconButton(
@@ -689,14 +705,20 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
         .importLyricsFile(content);
   }
 
-  IconData _loopIcon(PlaybackLoopMode mode) {
+  Widget _loopIcon(PlaybackLoopMode mode, ColorScheme scheme) {
     switch (mode) {
       case PlaybackLoopMode.off:
-        return Icons.repeat_outlined;
+        return const Icon(Icons.repeat_outlined);
       case PlaybackLoopMode.all:
-        return Icons.repeat_rounded;
+        return Icon(
+          Icons.repeat_rounded,
+          color: scheme.primary,
+        );
       case PlaybackLoopMode.one:
-        return Icons.repeat_one_rounded;
+        return Icon(
+          Icons.repeat_one_rounded,
+          color: scheme.primary,
+        );
     }
   }
 

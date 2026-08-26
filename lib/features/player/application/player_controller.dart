@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +17,7 @@ const _keyQueue = 'playback.queue_json';
 const _keyIndex = 'playback.index';
 const _keyPosition = 'playback.position_ms';
 const _keyLoop = 'playback.loop_mode';
+const _keyShuffle = 'playback.shuffle';
 const _restartThresholdMs = 3000;
 const _wrapDetectMs = 2000;
 
@@ -25,12 +27,14 @@ class PlayerUiState {
     this.currentIndex = -1,
     this.snapshot = const PlaybackSnapshot(),
     this.loopMode = PlaybackLoopMode.off,
+    this.shuffleEnabled = false,
   });
 
   final List<Song> queue;
   final int currentIndex;
   final PlaybackSnapshot snapshot;
   final PlaybackLoopMode loopMode;
+  final bool shuffleEnabled;
 
   bool get hasCurrent =>
       currentIndex >= 0 && currentIndex < queue.length;
@@ -44,12 +48,14 @@ class PlayerUiState {
     int? currentIndex,
     PlaybackSnapshot? snapshot,
     PlaybackLoopMode? loopMode,
+    bool? shuffleEnabled,
   }) {
     return PlayerUiState(
       queue: queue ?? this.queue,
       currentIndex: currentIndex ?? this.currentIndex,
       snapshot: snapshot ?? this.snapshot,
       loopMode: loopMode ?? this.loopMode,
+      shuffleEnabled: shuffleEnabled ?? this.shuffleEnabled,
     );
   }
 }
@@ -62,6 +68,9 @@ class PlayerController extends Notifier<PlayerUiState>
   bool _rebuilding = false;
   int _pendingPositionMs = 0;
   int? _recordedIndex;
+  final Random _random = Random();
+  final List<int> _shuffleHistory = <int>[];
+  final Set<int> _shuffledPlayed = <int>{};
   int _lastPositionMs = 0;
   bool _wasPlaying = false;
 
@@ -111,6 +120,7 @@ class PlayerController extends Notifier<PlayerUiState>
     _pendingPositionMs =
         int.tryParse(await settings.getString(_keyPosition) ?? '') ?? 0;
     final loopName = await settings.getString(_keyLoop);
+    final shuffleSaved = await settings.getString(_keyShuffle);
 
     var mode = PlaybackLoopMode.off;
     for (final m in PlaybackLoopMode.values) {
@@ -137,6 +147,7 @@ class PlayerController extends Notifier<PlayerUiState>
       queue: queue,
       currentIndex: index,
       loopMode: mode,
+      shuffleEnabled: shuffleSaved == 'true',
     );
     (await _engine).setLoopMode(mode);
     await _publishCurrentMediaItem();
@@ -299,6 +310,13 @@ class PlayerController extends Notifier<PlayerUiState>
     if (!state.hasCurrent) {
       return;
     }
+    final randomNext = _pickRandomNext();
+    if (randomNext != null) {
+      _shuffleHistory.add(state.currentIndex);
+      _shuffledPlayed.add(state.currentIndex);
+      await skipTo(randomNext);
+      return;
+    }
     var next = state.currentIndex + 1;
     if (next >= state.queue.length) {
       if (state.loopMode != PlaybackLoopMode.all) {
@@ -316,6 +334,10 @@ class PlayerController extends Notifier<PlayerUiState>
     }
     if (state.snapshot.positionMs > _restartThresholdMs) {
       await (await _engine).seek(Duration.zero);
+      return;
+    }
+    if (state.shuffleEnabled && _shuffleHistory.isNotEmpty) {
+      await skipTo(_shuffleHistory.removeLast());
       return;
     }
     var prev = state.currentIndex - 1;
@@ -344,6 +366,47 @@ class PlayerController extends Notifier<PlayerUiState>
     await (await _engine).skipToIndex(index);
     await _publishCurrentMediaItem();
     await _saveNow();
+  }
+
+  /// Toggles random playback over the current queue. Shuffle keeps its
+  /// own visited set so every song plays once before a new round.
+  Future<void> setShuffle({required bool enabled}) async {
+    if (state.shuffleEnabled == enabled) {
+      return;
+    }
+    state = state.copyWith(shuffleEnabled: enabled);
+    _resetShuffleMemory();
+    await ref
+        .read(settingsRepositoryProvider)
+        .setString(_keyShuffle, enabled ? 'true' : 'false');
+  }
+
+  /// Random next index when shuffle is on; null otherwise. When every
+  /// other song has been played the visited set resets (round-based).
+  int? _pickRandomNext() {
+    if (!state.shuffleEnabled || state.queue.length < 2) {
+      return null;
+    }
+    var candidates = <int>[
+      for (var i = 0; i < state.queue.length; i++)
+        if (i != state.currentIndex && !_shuffledPlayed.contains(i)) i,
+    ];
+    if (candidates.isEmpty) {
+      _shuffledPlayed.clear();
+      candidates = <int>[
+        for (var i = 0; i < state.queue.length; i++)
+          if (i != state.currentIndex) i,
+      ];
+    }
+    if (candidates.isEmpty) {
+      return null;
+    }
+    return candidates[_random.nextInt(candidates.length)];
+  }
+
+  void _resetShuffleMemory() {
+    _shuffleHistory.clear();
+    _shuffledPlayed.clear();
   }
 
   Future<void> cycleLoopMode() async {
@@ -410,6 +473,7 @@ class PlayerController extends Notifier<PlayerUiState>
       state = PlayerUiState(loopMode: state.loopMode);
       _pendingPositionMs = 0;
       _recordedIndex = null;
+      _resetShuffleMemory();
       _lastPositionMs = 0;
       _wasPlaying = false;
       final handler = await _handler;
@@ -442,6 +506,7 @@ class PlayerController extends Notifier<PlayerUiState>
   }) async {
     _rebuilding = true;
     _recordedIndex = null;
+    _resetShuffleMemory();
     _lastPositionMs = startPositionMs ?? 0;
     _wasPlaying = false;
     try {
