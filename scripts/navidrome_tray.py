@@ -31,14 +31,32 @@ from PIL import Image, ImageDraw
 
 
 def make_icon() -> Image.Image:
-    """Draws a simple white music note on a green rounded square."""
-    img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-    draw.rounded_rectangle([4, 4, 60, 60], radius=14, fill=(76, 175, 80, 255))
-    draw.ellipse([18, 34, 34, 50], fill="white")
-    draw.rectangle([31, 16, 35, 44], fill="white")
-    draw.polygon([(35, 16), (48, 11), (48, 19), (35, 23)], fill="white")
-    return img
+    """Draws a blue record disc inspired by the Navidrome logo."""
+    scale = 4  # supersample for smooth edges
+    size = 64 * scale
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+
+    navy = (13, 71, 161, 255)      # outer rim
+    blue = (33, 150, 243, 255)     # disc face
+    light = (144, 202, 249, 255)   # groove highlight
+    white = (255, 255, 255, 255)
+
+    pad = 3 * scale
+    d.ellipse([pad, pad, size - pad, size - pad], fill=navy)
+    inset = 7 * scale
+    d.ellipse([inset, inset, size - inset, size - inset], fill=blue)
+    groove = 13 * scale
+    d.ellipse([groove, groove, size - groove, size - groove],
+              outline=light, width=2 * scale)
+
+    center = size // 2
+    hole = 5 * scale
+    d.ellipse([center - hole, center - hole,
+               center + hole, center + hole], fill=white)
+    d.arc([9 * scale, 9 * scale, size - 9 * scale, size - 9 * scale],
+          start=200, end=295, fill=(255, 255, 255, 170), width=2 * scale)
+    return img.resize((64, 64), Image.LANCZOS)
 
 
 def server_is_up(url: str) -> bool:
