@@ -89,6 +89,10 @@ Settings → Language → Follow system or pick manually.
 
 This project does not provide any online music sources or content distribution. It is a client for local files and **your own self-hosted server** only. By using this project you confirm that all content you play is legal.
 
+## 🤝 Credits
+
+This project is developed with the help of opencode.
+
 ## 📄 License
 
 [MIT](LICENSE) © 2026 DankFlumeMister

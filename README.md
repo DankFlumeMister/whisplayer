@@ -90,6 +90,10 @@ export PUB_HOSTED_URL=https://pub.flutter-io.cn
 
 本项目不提供任何在线音源或内容分发能力，仅作为本地文件与**自建服务器**的播放客户端。使用本项目即表示你已确保所播放内容的合法性。
 
+## 🤝 致谢
+
+本项目由opencode协助开发。
+
 ## 📄 License
 
 [MIT](LICENSE) © 2026 DankFlumeMister
