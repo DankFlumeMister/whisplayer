@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:whisplayer/app/app.dart';
 import 'package:whisplayer/core/locale/language_controller.dart';
 import 'package:whisplayer/core/providers/repository_providers.dart';
+import 'package:whisplayer/core/providers/startup_tab_provider.dart';
 import 'package:whisplayer/domain/entities/album.dart';
 import 'package:whisplayer/domain/entities/artist.dart';
 import 'package:whisplayer/domain/entities/song.dart';
@@ -76,6 +78,11 @@ class _FakeLibraryRepository implements LibraryRepository {
   Future<List<Song>> songsByArtist(int artistId) async => [];
 }
 
+class _CloudStartupTab extends StartupTab {
+  @override
+  String build() => 'cloud';
+}
+
 class _ZhLanguageController extends LanguageController {
   @override
   LocaleState build() => const LocaleState(locale: Locale('zh'));
@@ -85,7 +92,10 @@ class _ZhLanguageController extends LanguageController {
 }
 
 void main() {
-  Future<void> pumpApp(WidgetTester tester) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    List<Override> extraOverrides = const [],
+  }) async {
     // Pin zh so l10n-driven labels match the Chinese assertions below.
     await tester.pumpWidget(
       ProviderScope(
@@ -94,6 +104,7 @@ void main() {
             _FakeLibraryRepository(),
           ),
           languageControllerProvider.overrideWith(_ZhLanguageController.new),
+          ...extraOverrides,
         ],
         child: const WhisplayerApp(),
       ),
@@ -151,5 +162,16 @@ void main() {
       find.byType(SegmentedButton<ThemeMode>),
     );
     expect(Theme.of(darkContext).brightness, Brightness.dark);
+  });
+
+  testWidgets('startup tab preference lands on the cloud branch',
+      (tester) async {
+    await pumpApp(
+      tester,
+      extraOverrides: [
+        startupTabProvider.overrideWith(_CloudStartupTab.new),
+      ],
+    );
+    expect(find.text('云端音乐'), findsOneWidget);
   });
 }

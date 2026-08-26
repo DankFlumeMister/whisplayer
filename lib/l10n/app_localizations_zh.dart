@@ -233,6 +233,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tooltipSearch => '搜索';
 
   @override
+  String get startupPage => '启动页';
+
+  @override
+  String get tooltipShuffle => '随机播放';
+
+  @override
   String get tooltipSort => '排序';
 
   @override
@@ -360,6 +366,30 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get playFailedPrefix => '播放失败';
+
+  @override
+  String get cloudModeAlbums => '专辑';
+
+  @override
+  String get cloudModeFolders => '文件夹';
+
+  @override
+  String get cloudFoldersEmpty => '还没有文件夹';
+
+  @override
+  String get sortSongsCount => '歌曲数';
+
+  @override
+  String get tooltipToggleView => '切换查看方式';
+
+  @override
+  String get searchHintFolders => '搜索文件夹名称';
+
+  @override
+  String get folderNoSongs => '该文件夹没有音频文件';
+
+  @override
+  String get folderNoMatch => '未找到匹配的文件夹';
 
   @override
   String get searchHintCloud => '输入关键字模糊搜索云端歌曲与专辑';
@@ -890,6 +920,12 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get tooltipSearch => '搜尋';
 
   @override
+  String get startupPage => '啟動頁';
+
+  @override
+  String get tooltipShuffle => '隨機播放';
+
+  @override
   String get tooltipSort => '排序';
 
   @override
@@ -1014,6 +1050,30 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get playFailedPrefix => '播放失敗';
+
+  @override
+  String get cloudModeAlbums => '專輯';
+
+  @override
+  String get cloudModeFolders => '資料夾';
+
+  @override
+  String get cloudFoldersEmpty => '還沒有資料夾';
+
+  @override
+  String get sortSongsCount => '歌曲數';
+
+  @override
+  String get tooltipToggleView => '切換檢視方式';
+
+  @override
+  String get searchHintFolders => '搜尋資料夾名稱';
+
+  @override
+  String get folderNoSongs => '此資料夾沒有音訊檔案';
+
+  @override
+  String get folderNoMatch => '未找到符合的資料夾';
 
   @override
   String get searchHintCloud => '輸入關鍵字模糊搜尋雲端歌曲與專輯';

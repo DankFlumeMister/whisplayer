@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:whisplayer/core/locale/language_controller.dart';
+import 'package:whisplayer/core/providers/repository_providers.dart';
+import 'package:whisplayer/core/providers/startup_tab_provider.dart';
 import 'package:whisplayer/features/settings/application/overlay_controller.dart';
 import 'package:whisplayer/features/settings/application/theme_font_size.dart';
 import 'package:whisplayer/l10n/app_localizations.dart';
@@ -53,6 +55,18 @@ class SettingsPage extends ConsumerWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _showLanguageDialog(context, ref),
                 ),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const _StartupTabCard(),
               ),
             ),
           ),
@@ -175,6 +189,90 @@ class SettingsPage extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _StartupTabCard extends ConsumerStatefulWidget {
+  const _StartupTabCard();
+
+  @override
+  ConsumerState<_StartupTabCard> createState() =>
+      _StartupTabCardState();
+}
+
+class _StartupTabCardState extends ConsumerState<_StartupTabCard> {
+  String _value = 'local';
+
+  @override
+  void initState() {
+    super.initState();
+    scheduleMicrotask(_restore);
+  }
+
+  Future<void> _restore() async {
+    try {
+      final saved = await ref
+          .read(settingsRepositoryProvider)
+          .getString(keyStartupTab);
+      if (!mounted || saved == null || saved == _value) {
+        return;
+      }
+      setState(() => _value = saved);
+    } on Exception catch (_) {
+      // Settings storage unavailable - keep the default.
+    }
+  }
+
+  Future<void> _showPickSheet(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final options = <(String, String)>[
+      ('local', l10n.localTab),
+      ('cloud', l10n.cloudTab),
+    ];
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (value, label) in options)
+              ListTile(
+                title: Text(label),
+                trailing:
+                    _value == value ? const Icon(Icons.check) : null,
+                onTap: () {
+                  unawaited(
+                    ref
+                        .read(settingsRepositoryProvider)
+                        .setString(keyStartupTab, value),
+                  );
+                  setState(() => _value = value);
+                  Navigator.pop(sheetContext);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: ListTile(
+        leading: const Icon(Icons.rocket_launch_outlined),
+        title: Text(l10n.startupPage),
+        subtitle: Text(_value == 'cloud' ? l10n.cloudTab : l10n.localTab),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => unawaited(_showPickSheet(context)),
       ),
     );
   }

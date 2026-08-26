@@ -233,6 +233,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get tooltipSearch => '検索';
 
   @override
+  String get startupPage => '起動ページ';
+
+  @override
+  String get tooltipShuffle => 'シャッフル';
+
+  @override
   String get tooltipSort => '並べ替え';
 
   @override
@@ -360,6 +366,30 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get playFailedPrefix => '再生に失敗しました';
+
+  @override
+  String get cloudModeAlbums => 'アルバム';
+
+  @override
+  String get cloudModeFolders => 'フォルダ';
+
+  @override
+  String get cloudFoldersEmpty => 'フォルダがありません';
+
+  @override
+  String get sortSongsCount => '曲数';
+
+  @override
+  String get tooltipToggleView => '表示を切り替え';
+
+  @override
+  String get searchHintFolders => 'フォルダ名を検索';
+
+  @override
+  String get folderNoSongs => 'このフォルダに音声ファイルがありません';
+
+  @override
+  String get folderNoMatch => '一致するフォルダがありません';
 
   @override
   String get searchHintCloud => 'キーワードでクラウドの曲とアルバムを検索';

@@ -123,3 +123,103 @@ class SongArtwork extends StatelessWidget {
     );
   }
 }
+
+/// Cover-grid variant of [SongListView] for the library songs view.
+class SongGridView extends StatelessWidget {
+  const SongGridView({required this.songs, super.key});
+
+  final List<Song> songs;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 140),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 140,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.72,
+      ),
+      itemCount: songs.length,
+      itemBuilder: (context, index) =>
+          SongGridCard(songs: songs, index: index),
+    );
+  }
+}
+
+class SongGridCard extends ConsumerWidget {
+  const SongGridCard({
+    required this.songs,
+    required this.index,
+    super.key,
+  });
+
+  final List<Song> songs;
+  final int index;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final song = songs[index];
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => ref
+          .read(playerControllerProvider.notifier)
+          .playSongs(songs, startIndex: index),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: DecoratedBox(
+                decoration:
+                    BoxDecoration(color: scheme.secondaryContainer),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: song.artworkPath == null
+                      ? Center(
+                          child: Icon(
+                            Icons.music_note,
+                            size: 36,
+                            color: scheme.onSecondaryContainer,
+                          ),
+                        )
+                      : Image.file(
+                          File(song.artworkPath!),
+                          fit: BoxFit.cover,
+                          cacheWidth: 256,
+                          errorBuilder: (_, __, ___) => Center(
+                            child: Icon(
+                              Icons.music_note,
+                              size: 36,
+                              color: scheme.onSecondaryContainer,
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            song.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium,
+          ),
+          Text(
+            song.artistName ?? '',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

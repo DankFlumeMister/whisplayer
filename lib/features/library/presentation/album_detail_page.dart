@@ -46,7 +46,13 @@ class _AlbumDetailPageState extends ConsumerState<AlbumDetailPage> {
           }
           final songs = snapshot.data!;
           final album = widget.album;
-          final title = album?.title ?? songs.firstOrNull?.albumTitle ?? '';
+          final coverPath = album?.artworkPath ??
+              [
+                for (final song in songs)
+                  if (song.artworkPath != null) song.artworkPath!,
+              ].firstOrNull;
+          final title =
+              album?.title ?? songs.firstOrNull?.albumTitle ?? '';
           final subtitle = [
             album?.artistName ?? songs.firstOrNull?.artistName ?? '',
             if (album?.year != null) '${album!.year}',
@@ -67,10 +73,10 @@ class _AlbumDetailPageState extends ConsumerState<AlbumDetailPage> {
                         child: SizedBox(
                           width: 132,
                           height: 132,
-                          child: (album?.artworkPath != null &&
-                                  File(album!.artworkPath!).existsSync())
+                          child: (coverPath != null &&
+                                  File(coverPath).existsSync())
                               ? Image.file(
-                                  File(album.artworkPath!),
+                                  File(coverPath),
                                   fit: BoxFit.cover,
                                 )
                               : ColoredBox(

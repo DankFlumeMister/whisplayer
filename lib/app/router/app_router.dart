@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:whisplayer/core/providers/startup_tab_provider.dart';
 import 'package:whisplayer/domain/entities/album.dart';
 import 'package:whisplayer/domain/entities/artist.dart';
+import 'package:whisplayer/domain/entities/remote_server.dart';
 import 'package:whisplayer/features/library/presentation/album_detail_page.dart';
 import 'package:whisplayer/features/library/presentation/artist_detail_page.dart';
 import 'package:whisplayer/features/library/presentation/folder_detail_page.dart';
 import 'package:whisplayer/features/library/presentation/library_page.dart';
 import 'package:whisplayer/features/library/presentation/recently_played_page.dart';
 import 'package:whisplayer/features/library/presentation/remote_albums_page.dart';
+import 'package:whisplayer/features/library/presentation/remote_folder_page.dart';
 import 'package:whisplayer/features/library/presentation/songs_page.dart';
 import 'package:whisplayer/features/library/presentation/stats_page.dart';
 import 'package:whisplayer/features/player/presentation/player_page.dart';
@@ -23,8 +26,10 @@ import 'package:whisplayer/features/settings/presentation/settings_page.dart';
 import 'package:whisplayer/l10n/app_localizations.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  // Read (not watch): changing the preference applies next launch.
+  final startOnCloud = ref.read(startupTabProvider) == 'cloud';
   return GoRouter(
-    initialLocation: '/library',
+    initialLocation: startOnCloud ? '/cloud' : '/library',
     routes: [
       GoRoute(
         path: '/player',
@@ -104,6 +109,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/cloud',
                 builder: (_, __) => const RemoteAlbumsPage(),
+                routes: [
+                  GoRoute(
+                    path: 'folder/:serverId',
+                    builder: (context, state) {
+                      final server = state.extra as RemoteServer?;
+                      if (server == null) {
+                        return const Scaffold(
+                          body: Center(child: Text('missing server')),
+                        );
+                      }
+                      return RemoteFolderPage(
+                        server: server,
+                        folderName:
+                            state.uri.queryParameters['name'] ?? '',
+                        subPath: state.uri.queryParameters['sub'],
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),

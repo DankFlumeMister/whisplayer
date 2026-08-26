@@ -233,6 +233,12 @@ class AppLocalizationsKo extends AppLocalizations {
   String get tooltipSearch => '검색';
 
   @override
+  String get startupPage => '시작 페이지';
+
+  @override
+  String get tooltipShuffle => '셔플';
+
+  @override
   String get tooltipSort => '정렬';
 
   @override
@@ -360,6 +366,30 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get playFailedPrefix => '재생 실패';
+
+  @override
+  String get cloudModeAlbums => '앨범';
+
+  @override
+  String get cloudModeFolders => '폴더';
+
+  @override
+  String get cloudFoldersEmpty => '폴더가 없습니다';
+
+  @override
+  String get sortSongsCount => '곡 수';
+
+  @override
+  String get tooltipToggleView => '보기 전환';
+
+  @override
+  String get searchHintFolders => '폴더 이름 검색';
+
+  @override
+  String get folderNoSongs => '이 폴더에 오디오 파일이 없습니다';
+
+  @override
+  String get folderNoMatch => '일치하는 폴더가 없습니다';
 
   @override
   String get searchHintCloud => '키워드로 클라우드 곡과 앨범 검색';

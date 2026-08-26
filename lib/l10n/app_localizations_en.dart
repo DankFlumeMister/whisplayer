@@ -240,6 +240,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tooltipSearch => 'Search';
 
   @override
+  String get startupPage => 'Startup page';
+
+  @override
+  String get tooltipShuffle => 'Shuffle';
+
+  @override
   String get tooltipSort => 'Sort';
 
   @override
@@ -367,6 +373,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get playFailedPrefix => 'Playback failed';
+
+  @override
+  String get cloudModeAlbums => 'Albums';
+
+  @override
+  String get cloudModeFolders => 'Folders';
+
+  @override
+  String get cloudFoldersEmpty => 'No folders yet';
+
+  @override
+  String get sortSongsCount => 'Song count';
+
+  @override
+  String get tooltipToggleView => 'Toggle view';
+
+  @override
+  String get searchHintFolders => 'Search folder names';
+
+  @override
+  String get folderNoSongs => 'No audio files in this folder';
+
+  @override
+  String get folderNoMatch => 'No matching folders';
 
   @override
   String get searchHintCloud => 'Fuzzy-search cloud songs & albums';

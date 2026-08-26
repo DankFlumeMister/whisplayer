@@ -529,6 +529,18 @@ abstract class AppLocalizations {
   /// **'搜索'**
   String get tooltipSearch;
 
+  /// No description provided for @startupPage.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动页'**
+  String get startupPage;
+
+  /// No description provided for @tooltipShuffle.
+  ///
+  /// In zh, this message translates to:
+  /// **'随机播放'**
+  String get tooltipShuffle;
+
   /// No description provided for @tooltipSort.
   ///
   /// In zh, this message translates to:
@@ -750,6 +762,54 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'播放失败'**
   String get playFailedPrefix;
+
+  /// No description provided for @cloudModeAlbums.
+  ///
+  /// In zh, this message translates to:
+  /// **'专辑'**
+  String get cloudModeAlbums;
+
+  /// No description provided for @cloudModeFolders.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件夹'**
+  String get cloudModeFolders;
+
+  /// No description provided for @cloudFoldersEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有文件夹'**
+  String get cloudFoldersEmpty;
+
+  /// No description provided for @sortSongsCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'歌曲数'**
+  String get sortSongsCount;
+
+  /// No description provided for @tooltipToggleView.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换查看方式'**
+  String get tooltipToggleView;
+
+  /// No description provided for @searchHintFolders.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索文件夹名称'**
+  String get searchHintFolders;
+
+  /// No description provided for @folderNoSongs.
+  ///
+  /// In zh, this message translates to:
+  /// **'该文件夹没有音频文件'**
+  String get folderNoSongs;
+
+  /// No description provided for @folderNoMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'未找到匹配的文件夹'**
+  String get folderNoMatch;
 
   /// No description provided for @searchHintCloud.
   ///

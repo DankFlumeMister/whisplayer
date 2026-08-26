@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:whisplayer/app/app.dart';
 import 'package:whisplayer/core/providers/playback_providers.dart';
+import 'package:whisplayer/core/providers/startup_tab_provider.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
 import 'package:whisplayer/features/settings/application/overlay_controller.dart';
 import 'package:whisplayer/overlay/desktop_lyrics_overlay.dart';
@@ -14,6 +15,7 @@ Future<void> main() async {
   await container
       .read(playerControllerProvider.notifier)
       .restoreSession();
+  await container.read(startupTabProvider.notifier).restore();
   container.read(overlayControllerProvider);
   runApp(
     UncontrolledProviderScope(

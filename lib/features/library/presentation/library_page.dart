@@ -13,6 +13,8 @@ import 'package:whisplayer/features/library/presentation/widgets/song_list_view.
 import 'package:whisplayer/features/player/application/player_controller.dart';
 import 'package:whisplayer/l10n/app_localizations.dart';
 
+const String _keySongsView = 'library.songs_view';
+
 class LibraryPage extends ConsumerStatefulWidget {
   const LibraryPage({super.key});
 
@@ -24,8 +26,37 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
   int _viewIndex = 0;
   SongSort _sort = SongSort.title;
   bool _descending = false;
+  bool _songsGrid = false;
   final SearchController _searchController = SearchController();
   int _searchToken = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    scheduleMicrotask(_restoreSongsView);
+  }
+
+  Future<void> _restoreSongsView() async {
+    try {
+      final value =
+          await ref.read(settingsRepositoryProvider).getString(_keySongsView);
+      if (!mounted) {
+        return;
+      }
+      setState(() => _songsGrid = value == 'grid');
+    } on Exception {
+      // Settings storage unavailable — keep the list default.
+    }
+  }
+
+  void _toggleSongsView() {
+    setState(() => _songsGrid = !_songsGrid);
+    unawaited(
+      ref
+          .read(settingsRepositoryProvider)
+          .setString(_keySongsView, _songsGrid ? 'grid' : 'list'),
+    );
+  }
 
   static List<String> _viewLabels(AppLocalizations l10n) => [
         l10n.songsTab,
@@ -72,6 +103,16 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                   onPressed: _showSortMenu,
                   icon: const Icon(Icons.sort_rounded),
                 ),
+              if (_viewIndex == 0)
+                IconButton(
+                  tooltip: l10n.tooltipToggleView,
+                  onPressed: _toggleSongsView,
+                  icon: Icon(
+                    _songsGrid
+                        ? Icons.view_list_rounded
+                        : Icons.grid_view_rounded,
+                  ),
+                ),
               IconButton(
                 tooltip: l10n.settingsTitle,
                 onPressed: () => unawaited(context.push('/settings')),
@@ -109,6 +150,9 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
                     final songs = snapshot.data ?? const <Song>[];
                     if (songs.isEmpty) {
                       return _EmptyHint(text: l10n.libraryEmpty);
+                    }
+                    if (_songsGrid) {
+                      return SongGridView(songs: songs);
                     }
                     return RefreshIndicator(
                       onRefresh: () async {},
