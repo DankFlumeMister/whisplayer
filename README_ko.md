@@ -1,4 +1,4 @@
-# Whisplayer
+# whisplayer
 
 [![CI](https://github.com/DankFlumeMister/whisplayer/actions/workflows/ci.yml/badge.svg)](https://github.com/DankFlumeMister/whisplayer/actions/workflows/ci.yml)
 
