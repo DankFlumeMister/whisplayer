@@ -49,3 +49,6 @@ app.*.map.json
 
 # Internal handoff document - never publish
 /PROJECT_HANDOFF.md
+
+# Agent workspace (memory, session data) - never publish
+.workbuddy-ai/
