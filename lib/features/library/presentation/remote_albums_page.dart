@@ -541,7 +541,7 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
       if (!mounted || albumSongs.isEmpty) {
         return;
       }
-      final targetPath = 'subsonic://${server.id}/${remoteSong.id}';
+      final targetPath = encodeSubsonicPath(server.id, remoteSong.id);
       var startIndex =
           albumSongs.indexWhere((s) => s.path == targetPath);
       if (startIndex < 0) {

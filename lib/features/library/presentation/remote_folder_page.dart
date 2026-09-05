@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/data/navidrome/navidrome_models.dart';
+import 'package:whisplayer/data/remote/remote_library_service.dart';
 import 'package:whisplayer/domain/entities/remote_server.dart';
 import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/features/library/presentation/stats_page.dart';
@@ -173,8 +174,7 @@ class _RemoteFolderPageState extends ConsumerState<RemoteFolderPage> {
       if (!mounted || localSongs.isEmpty) {
         return;
       }
-      final targetPath =
-          'subsonic://${widget.server.id}/${remote.id}';
+      final targetPath = encodeSubsonicPath(widget.server.id, remote.id);
       var startIndex =
           localSongs.indexWhere((s) => s.path == targetPath);
       if (startIndex < 0) {
