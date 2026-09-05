@@ -27,7 +27,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: master
-          flutter-version: 3.48.0-0.2.pre
+          flutter-version: 3.48.0-0.3.pre
           cache: true
 
       - run: flutter pub get
