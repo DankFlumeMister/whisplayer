@@ -93,7 +93,6 @@ class _FakeLibrary implements LibraryRepository {
   @override
   Future<Song?> getSong(int songId) async => byId[songId];
 
-  // region unused interface members
   @override
   Stream<List<Song>> watchSongs({
     SongSort sort = SongSort.title,
@@ -115,17 +114,11 @@ class _FakeLibrary implements LibraryRepository {
   Future<List<Song>> getAllSongs() async => const <Song>[];
 
   @override
-  Future<Song?> getLastPlayedSong() async => null;
-
-  @override
   Future<List<Song>> songsByAlbum(int albumId) async =>
       byAlbum[albumId] ?? const <Song>[];
 
   @override
   Future<List<Song>> songsByArtist(int artistId) async => [];
-
-  @override
-  Future<List<Song>> searchSongs(String query) async => [];
 
   @override
   Stream<List<Album>> watchAlbums() => Stream.value(const <Album>[]);
@@ -135,24 +128,6 @@ class _FakeLibrary implements LibraryRepository {
 
   @override
   Future<void> setFavorite(int songId, {required bool favorite}) async {}
-
-  @override
-  Future<void> savePosition({
-    required int songId,
-    required int positionMs,
-  }) async {}
-
-  @override
-  Future<void> recordPlayback({
-    required int songId,
-    required int playedMs,
-    required int playedAtMs,
-    required bool completed,
-  }) async {}
-
-  @override
-  Future<int> removeSongsMissingFrom(Set<String> validPaths) async => 0;
-  // endregion
 }
 
 SubsonicAlbumDetail _detail() => const SubsonicAlbumDetail(

@@ -7,9 +7,10 @@ import 'package:whisplayer/domain/entities/play_history_entry.dart';
 import 'package:whisplayer/domain/entities/play_stats.dart';
 import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/domain/entities/source_type.dart';
-import 'package:whisplayer/domain/repositories/playlist_repository.dart';
 import 'package:whisplayer/features/library/presentation/recently_played_page.dart';
 import 'package:whisplayer/l10n/app_localizations.dart';
+
+import 'helpers/fakes.dart';
 
 Song _song(int id) => Song(
       id: id,
@@ -44,36 +45,6 @@ PlayHistoryEntry _entry(
       completed: completed,
       song: _song(songId),
     );
-
-class _FakeHistoryRepository implements HistoryRepository {
-  _FakeHistoryRepository({this.entries = const [], this.stats});
-
-  final List<PlayHistoryEntry> entries;
-  final PlayStats? stats;
-
-  @override
-  Future<void> addPlayRecord({
-    required int songId,
-    required int playedAtMs,
-    required int playedMs,
-    required bool completed,
-  }) async {}
-
-  @override
-  Stream<List<PlayHistoryEntry>> watchRecent({int? limit}) {
-    return Stream.value(entries);
-  }
-
-  @override
-  Future<PlayStats> overallStats() async {
-    return stats ??
-        const PlayStats(
-          totalPlays: 0,
-          totalPlayedMs: 0,
-          completedPlays: 0,
-        );
-  }
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -161,7 +132,7 @@ void main() {
       (tester) async {
     final playedAt =
         DateTime.now().millisecondsSinceEpoch - 5 * 60 * 1000;
-    final fake = _FakeHistoryRepository(
+    final fake = FakeHistoryRepository(
       entries: [
         PlayHistoryEntry(
           id: 1,
@@ -205,7 +176,7 @@ void main() {
       (tester) async {
     await tester.idle();
     final playedAt = DateTime.now().millisecondsSinceEpoch - 60 * 1000;
-    final fake = _FakeHistoryRepository(
+    final fake = FakeHistoryRepository(
       entries: [
         _entry(1, 1, playedAt),
         _entry(2, 1, playedAt - 180000),
@@ -236,7 +207,7 @@ void main() {
   testWidgets('empty history shows hint without stats header',
       (tester) async {
     await tester.idle();
-    final fake = _FakeHistoryRepository();
+    final fake = FakeHistoryRepository();
 
     tester.platformDispatcher.localesTestValue = const [Locale('zh')];
     await tester.pumpWidget(

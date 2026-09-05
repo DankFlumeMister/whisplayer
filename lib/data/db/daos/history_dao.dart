@@ -12,22 +12,6 @@ class HistoryDao extends DatabaseAccessor<AppDatabase>
     with _$HistoryDaoMixin {
   HistoryDao(super.db);
 
-  Future<void> add({
-    required int songId,
-    required int playedAtMs,
-    required int playedMs,
-    required bool completed,
-  }) {
-    return into(playHistory).insert(
-      PlayHistoryCompanion.insert(
-        songId: songId,
-        playedAtMs: playedAtMs,
-        playedMs: playedMs,
-        completed: Value(completed),
-      ),
-    );
-  }
-
   Stream<List<PlayHistoryEntry>> watchRecent({int limit = 100}) {
     final q = _query()..limit(limit);
     return q.watch().map(_toEntries);

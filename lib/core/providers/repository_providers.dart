@@ -5,11 +5,13 @@ import 'package:whisplayer/core/providers/database_provider.dart';
 import 'package:whisplayer/core/providers/scanner_providers.dart';
 import 'package:whisplayer/data/remote/remote_library_service.dart';
 import 'package:whisplayer/data/repositories/drift_library_repository.dart';
+import 'package:whisplayer/data/repositories/drift_playback_record_repository.dart';
 import 'package:whisplayer/data/repositories/drift_playlist_repository.dart';
 import 'package:whisplayer/data/repositories/drift_remote_server_repository.dart';
 import 'package:whisplayer/data/repositories/drift_settings_repository.dart';
 import 'package:whisplayer/data/repositories/secure_credential_store.dart';
 import 'package:whisplayer/domain/repositories/library_repository.dart';
+import 'package:whisplayer/domain/repositories/playback_record_repository.dart';
 import 'package:whisplayer/domain/repositories/playlist_repository.dart';
 import 'package:whisplayer/domain/repositories/remote_server_repository.dart';
 import 'package:whisplayer/domain/repositories/settings_repository.dart';
@@ -28,6 +30,11 @@ final historyRepositoryProvider = Provider<HistoryRepository>((ref) {
 
 final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
   return DriftSettingsRepository(ref.watch(appDatabaseProvider));
+});
+
+final playbackRecordRepositoryProvider =
+    Provider<PlaybackRecordRepository>((ref) {
+  return DriftPlaybackRecordRepository(ref.watch(appDatabaseProvider));
 });
 
 final credentialStoreProvider = Provider<CredentialStore>((ref) {

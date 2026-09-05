@@ -26,13 +26,6 @@ abstract interface class PlaylistRepository {
 }
 
 abstract interface class HistoryRepository {
-  Future<void> addPlayRecord({
-    required int songId,
-    required int playedAtMs,
-    required int playedMs,
-    required bool completed,
-  });
-
   Stream<List<PlayHistoryEntry>> watchRecent({int limit});
 
   Future<PlayStats> overallStats();

@@ -117,32 +117,6 @@ void main() {
     expect(stats['totalPlayedMs'], 5000);
   });
 
-  test('getLastPlayedSong returns most recent', () async {
-    await db.songDao.upsertAll([
-      song('/old.flac', 'Old'),
-      song('/new.flac', 'New'),
-    ]);
-    final all = await db.songDao.getAllSongs();
-    final oldId = all.firstWhere((s) => s.title == 'Old').id;
-    final newId = all.firstWhere((s) => s.title == 'New').id;
-
-    await db.songDao.recordPlayback(
-      songId: oldId,
-      playedMs: 10,
-      playedAtMs: 100,
-      completed: true,
-    );
-    await db.songDao.recordPlayback(
-      songId: newId,
-      playedMs: 10,
-      playedAtMs: 200,
-      completed: true,
-    );
-
-    final last = await db.songDao.getLastPlayedSong();
-    expect(last!.title, 'New');
-  });
-
   test('removeMissingFrom deletes stale rows and orphans', () async {
     final keepAlbum = await seedAlbum(albumTitle: 'Keep');
     final dropAlbum =
@@ -212,16 +186,14 @@ void main() {
     expect(left, isEmpty);
   });
 
-  test('favorite and position persist', () async {
+  test('favorite persists', () async {
     await db.songDao.upsertAll([song('/f.flac', 'F')]);
     final s = (await db.songDao.getAllSongs()).single;
 
     await db.songDao.setFavorite(s.id, favorite: true);
-    await db.songDao.savePosition(songId: s.id, positionMs: 12345);
 
     final reloaded = await db.songDao.getSong(s.id);
     expect(reloaded!.isFavorite, isTrue);
-    expect(reloaded.lastPositionMs, 12345);
   });
 
   test('settings roundtrip', () async {

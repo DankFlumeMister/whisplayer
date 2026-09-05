@@ -55,21 +55,6 @@ class DriftHistoryRepository implements HistoryRepository {
   final AppDatabase _db;
 
   @override
-  Future<void> addPlayRecord({
-    required int songId,
-    required int playedAtMs,
-    required int playedMs,
-    required bool completed,
-  }) {
-    return _db.historyDao.add(
-      songId: songId,
-      playedAtMs: playedAtMs,
-      playedMs: playedMs,
-      completed: completed,
-    );
-  }
-
-  @override
   Stream<List<PlayHistoryEntry>> watchRecent({int limit = 100}) {
     return _db.historyDao.watchRecent(limit: limit);
   }

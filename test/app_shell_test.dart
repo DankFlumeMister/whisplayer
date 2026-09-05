@@ -7,76 +7,8 @@ import 'package:whisplayer/app/app.dart';
 import 'package:whisplayer/core/locale/language_controller.dart';
 import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/core/providers/startup_tab_provider.dart';
-import 'package:whisplayer/domain/entities/album.dart';
-import 'package:whisplayer/domain/entities/artist.dart';
-import 'package:whisplayer/domain/entities/song.dart';
-import 'package:whisplayer/domain/repositories/library_repository.dart';
 
-class _FakeLibraryRepository implements LibraryRepository {
-  @override
-  Future<List<Song>> getAllSongs() async => [];
-
-  @override
-  Future<Song?> getLastPlayedSong() async => null;
-
-  @override
-  Future<Song?> getSong(int songId) async => null;
-
-  @override
-  Stream<List<Album>> watchAlbums() =>
-      Stream.value(const <Album>[]);
-
-  @override
-  Stream<List<Artist>> watchArtists() =>
-      Stream.value(const <Artist>[]);
-
-  @override
-  Stream<List<Song>> watchSongs({
-    SongSort sort = SongSort.title,
-    bool descending = false,
-  }) {
-    return Stream.value(const <Song>[]);
-  }
-
-  @override
-  Stream<List<Song>> watchLocalSongs({
-    SongSort sort = SongSort.title,
-    bool descending = false,
-  }) {
-    return watchSongs(sort: sort, descending: descending);
-  }
-
-  @override
-  Future<List<Song>> searchLocalSongs(String query) => searchSongs(query);
-  @override
-  Future<int> removeSongsMissingFrom(Set<String> validPaths) async => 0;
-
-  @override
-  Future<void> savePosition({
-    required int songId,
-    required int positionMs,
-  }) async {}
-
-  @override
-  Future<void> recordPlayback({
-    required int songId,
-    required int playedMs,
-    required int playedAtMs,
-    required bool completed,
-  }) async {}
-
-  @override
-  Future<List<Song>> searchSongs(String query) async => [];
-
-  @override
-  Future<void> setFavorite(int songId, {required bool favorite}) async {}
-
-  @override
-  Future<List<Song>> songsByAlbum(int albumId) async => [];
-
-  @override
-  Future<List<Song>> songsByArtist(int artistId) async => [];
-}
+import 'helpers/fakes.dart';
 
 class _CloudStartupTab extends StartupTab {
   @override
@@ -101,7 +33,7 @@ void main() {
       ProviderScope(
         overrides: [
           libraryRepositoryProvider.overrideWithValue(
-            _FakeLibraryRepository(),
+            FakeLibraryRepository(),
           ),
           languageControllerProvider.overrideWith(_ZhLanguageController.new),
           ...extraOverrides,

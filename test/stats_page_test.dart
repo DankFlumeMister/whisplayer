@@ -3,13 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:whisplayer/core/providers/repository_providers.dart';
-import 'package:whisplayer/domain/entities/album.dart';
-import 'package:whisplayer/domain/entities/artist.dart';
 import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/domain/entities/source_type.dart';
-import 'package:whisplayer/domain/repositories/library_repository.dart';
 import 'package:whisplayer/features/library/presentation/stats_page.dart';
 import 'package:whisplayer/l10n/app_localizations.dart';
+
+import 'helpers/fakes.dart';
 
 Song _song(int id, {required int playCount, int totalPlayMs = 0}) => Song(
       id: id,
@@ -28,75 +27,6 @@ Song _song(int id, {required int playCount, int totalPlayMs = 0}) => Song(
       lastPositionMs: 0,
       isFavorite: false,
     );
-
-class _FakeLibraryRepository implements LibraryRepository {
-  _FakeLibraryRepository({this.songs = const <Song>[]});
-
-  final List<Song> songs;
-
-  @override
-  Stream<List<Song>> watchSongs({
-    SongSort sort = SongSort.title,
-    bool descending = false,
-  }) {
-    return Stream.value(songs);
-  }
-
-  @override
-  Stream<List<Song>> watchLocalSongs({
-    SongSort sort = SongSort.title,
-    bool descending = false,
-  }) {
-    return watchSongs(sort: sort, descending: descending);
-  }
-
-  @override
-  Future<List<Song>> searchLocalSongs(String query) async => [];
-
-  @override
-  Future<List<Song>> getAllSongs() async => songs;
-
-  @override
-  Future<Song?> getLastPlayedSong() async => null;
-
-  @override
-  Future<Song?> getSong(int songId) async => null;
-
-  @override
-  Future<List<Song>> songsByAlbum(int albumId) async => [];
-
-  @override
-  Future<List<Song>> songsByArtist(int artistId) async => [];
-
-  @override
-  Future<List<Song>> searchSongs(String query) async => [];
-
-  @override
-  Stream<List<Album>> watchAlbums() => Stream.value(const <Album>[]);
-
-  @override
-  Stream<List<Artist>> watchArtists() => Stream.value(const <Artist>[]);
-
-  @override
-  Future<void> setFavorite(int songId, {required bool favorite}) async {}
-
-  @override
-  Future<void> savePosition({
-    required int songId,
-    required int positionMs,
-  }) async {}
-
-  @override
-  Future<void> recordPlayback({
-    required int songId,
-    required int playedMs,
-    required int playedAtMs,
-    required bool completed,
-  }) async {}
-
-  @override
-  Future<int> removeSongsMissingFrom(Set<String> validPaths) async => 0;
-}
 
 void main() {
   group('topPlayedSongs', () {
@@ -137,8 +67,7 @@ void main() {
     test('limits the number of entries', () {
       final top = topPlayedSongs(
         [
-          for (var i = 1; i <= 15; i++)
-            _song(i, playCount: i),
+          for (var i = 1; i <= 15; i++) _song(i, playCount: i),
         ],
         limit: 10,
       );
@@ -169,12 +98,13 @@ void main() {
 
   testWidgets('renders top played rows with cumulative listen time',
       (tester) async {
-    final library = _FakeLibraryRepository(
+    final library = FakeLibraryRepository(
       songs: [
         _song(1, playCount: 2),
         _song(2, playCount: 5, totalPlayMs: 600000),
         _song(3, playCount: 0),
       ],
+      exposeSongsInWatch: true,
     );
 
     tester.platformDispatcher.localesTestValue = const [Locale('zh')];
@@ -187,8 +117,7 @@ void main() {
             locale: Locale('zh'),
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: StatsPage(),
-          )
+            home: StatsPage()),
       ),
     );
     await tester.idle();
@@ -204,8 +133,9 @@ void main() {
 
   testWidgets('no played songs shows hint without sections',
       (tester) async {
-    final library = _FakeLibraryRepository(
+    final library = FakeLibraryRepository(
       songs: [_song(1, playCount: 0)],
+      exposeSongsInWatch: true,
     );
 
     tester.platformDispatcher.localesTestValue = const [Locale('zh')];
@@ -218,8 +148,7 @@ void main() {
             locale: Locale('zh'),
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: StatsPage(),
-          )
+            home: StatsPage()),
       ),
     );
     await tester.idle();

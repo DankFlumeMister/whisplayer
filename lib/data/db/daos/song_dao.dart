@@ -112,18 +112,6 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
     return rows.map(_map).toList();
   }
 
-  Future<Song?> getLastPlayedSong() async {
-    final q = _query()
-      ..where(songs.lastPlayedAtMs.isNotNull())
-      ..orderBy([
-        OrderingTerm.asc(songs.lastPlayedAtMs.isNull()),
-        OrderingTerm.desc(songs.lastPlayedAtMs),
-      ])
-      ..limit(1);
-    final rows = await q.get();
-    return rows.isEmpty ? null : _map(rows.first);
-  }
-
   Future<List<Song>> search(
     String query, {
     int limit = 200,
@@ -194,15 +182,6 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
   Future<void> setFavorite(int songId, {required bool favorite}) {
     return (update(songs)..where((t) => t.id.equals(songId))).write(
       SongsCompanion(isFavorite: Value(favorite)),
-    );
-  }
-
-  Future<void> savePosition({
-    required int songId,
-    required int positionMs,
-  }) {
-    return (update(songs)..where((t) => t.id.equals(songId))).write(
-      SongsCompanion(lastPositionMs: Value(positionMs)),
     );
   }
 

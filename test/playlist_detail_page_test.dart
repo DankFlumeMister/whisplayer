@@ -5,17 +5,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:whisplayer/core/providers/repository_providers.dart';
-import 'package:whisplayer/domain/entities/album.dart';
-import 'package:whisplayer/domain/entities/artist.dart';
 import 'package:whisplayer/domain/entities/playlist.dart';
 import 'package:whisplayer/domain/entities/remote_server.dart';
 import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/domain/entities/source_type.dart';
-import 'package:whisplayer/domain/repositories/library_repository.dart';
 import 'package:whisplayer/domain/repositories/playlist_repository.dart';
 import 'package:whisplayer/domain/repositories/remote_server_repository.dart';
 import 'package:whisplayer/features/playlists/presentation/playlist_detail_page.dart';
 import 'package:whisplayer/l10n/app_localizations.dart';
+
+import 'helpers/fakes.dart';
 
 class _FakePlaylistRepository implements PlaylistRepository {
   _FakePlaylistRepository({this.entries = const <PlaylistEntry>[]});
@@ -71,74 +70,6 @@ class _FakePlaylistRepository implements PlaylistRepository {
   @override
   Stream<List<PlaylistEntry>> watchEntries(int playlistId) =>
       Stream.value(entries);
-}
-
-class _FakeLibraryRepository implements LibraryRepository {
-  _FakeLibraryRepository({this.songs = const <Song>[]});
-
-  final List<Song> songs;
-
-  @override
-  Future<List<Song>> getAllSongs() async => songs;
-
-  @override
-  Future<Song?> getLastPlayedSong() async => null;
-
-  @override
-  Future<Song?> getSong(int songId) async => null;
-
-  @override
-  Stream<List<Album>> watchAlbums() => Stream.value(const <Album>[]);
-
-  @override
-  Stream<List<Artist>> watchArtists() => Stream.value(const <Artist>[]);
-
-  @override
-  Stream<List<Song>> watchSongs({
-    SongSort sort = SongSort.title,
-    bool descending = false,
-  }) =>
-      Stream.value(const <Song>[]);
-
-  @override
-  Stream<List<Song>> watchLocalSongs({
-    SongSort sort = SongSort.title,
-    bool descending = false,
-  }) =>
-      watchSongs(sort: sort, descending: descending);
-
-  @override
-  Future<List<Song>> searchLocalSongs(String query) => searchSongs(query);
-
-  @override
-  Future<int> removeSongsMissingFrom(Set<String> validPaths) async => 0;
-
-  @override
-  Future<void> savePosition({
-    required int songId,
-    required int positionMs,
-  }) async {}
-
-  @override
-  Future<void> recordPlayback({
-    required int songId,
-    required int playedMs,
-    required int playedAtMs,
-    required bool completed,
-  }) async {}
-
-  @override
-  Future<List<Song>> searchSongs(String query) async =>
-      songs.where((s) => s.title.contains(query)).toList();
-
-  @override
-  Future<void> setFavorite(int songId, {required bool favorite}) async {}
-
-  @override
-  Future<List<Song>> songsByAlbum(int albumId) async => const [];
-
-  @override
-  Future<List<Song>> songsByArtist(int artistId) async => const [];
 }
 
 class _FakeRemoteServerRepository implements RemoteServerRepository {
@@ -331,7 +262,7 @@ void main() {
   testWidgets('add sheet filters local songs and adds via repository',
       (tester) async {
     final repo = _FakePlaylistRepository();
-    final library = _FakeLibraryRepository(songs: [
+    final library = FakeLibraryRepository(songs: [
       _song(1),
       _song(2),
       _song(3),
@@ -367,7 +298,7 @@ void main() {
       (tester) async {
     await _pump(tester, [
       playlistRepositoryProvider.overrideWithValue(_FakePlaylistRepository()),
-      libraryRepositoryProvider.overrideWithValue(_FakeLibraryRepository()),
+      libraryRepositoryProvider.overrideWithValue(FakeLibraryRepository()),
       remoteServerRepositoryProvider.overrideWithValue(
         _FakeRemoteServerRepository(),
       ),

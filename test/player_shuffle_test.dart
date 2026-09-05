@@ -1,156 +1,35 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:whisplayer/core/providers/playback_providers.dart';
 import 'package:whisplayer/core/providers/repository_providers.dart';
-import 'package:whisplayer/domain/entities/album.dart';
-import 'package:whisplayer/domain/entities/artist.dart';
-import 'package:whisplayer/domain/entities/playback.dart';
 import 'package:whisplayer/domain/entities/song.dart';
-import 'package:whisplayer/domain/repositories/audio_engine.dart';
-import 'package:whisplayer/domain/repositories/library_repository.dart';
-import 'package:whisplayer/domain/repositories/settings_repository.dart';
+import 'package:whisplayer/domain/entities/source_type.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
 
+import 'helpers/fakes.dart';
+import 'helpers/run_guarded.dart';
 
-class _FakeLibraryRepository implements LibraryRepository {
-  @override
-  Future<void> recordPlayback({
-    required int songId,
-    required int playedMs,
-    required int playedAtMs,
-    required bool completed,
-  }) async {}
-
-  @override
-  Future<List<Song>> getAllSongs() async => const <Song>[];
-
-  @override
-  Future<Song?> getLastPlayedSong() async => null;
-
-  @override
-  Future<Song?> getSong(int songId) async => null;
-
-  @override
-  Stream<List<Album>> watchAlbums() => Stream.value(const <Album>[]);
-
-  @override
-  Stream<List<Artist>> watchArtists() => Stream.value(const <Artist>[]);
-
-  @override
-  Stream<List<Song>> watchSongs({
-    SongSort sort = SongSort.title,
-    bool descending = false,
-  }) =>
-      Stream.value(const <Song>[]);
-
-  @override
-  Stream<List<Song>> watchLocalSongs({
-    SongSort sort = SongSort.title,
-    bool descending = false,
-  }) =>
-      Stream.value(const <Song>[]);
-
-  @override
-  Future<List<Song>> searchLocalSongs(String query) async => [];
-
-  @override
-  Future<int> removeSongsMissingFrom(Set<String> validPaths) async => 0;
-
-  @override
-  Future<void> savePosition({
-    required int songId,
-    required int positionMs,
-  }) async {}
-
-  @override
-  Future<List<Song>> searchSongs(String query) async => [];
-
-  @override
-  Future<void> setFavorite(int songId, {required bool favorite}) async {}
-
-  @override
-  Future<List<Song>> songsByAlbum(int albumId) async => [];
-
-  @override
-  Future<List<Song>> songsByArtist(int artistId) async => [];
-}
-
-class _FakeSettingsRepository implements SettingsRepository {
-  _FakeSettingsRepository([Map<String, String>? initial])
-      : values = initial ?? {};
-
-  final Map<String, String> values;
-
-  @override
-  Future<String?> getString(String key) async => values[key];
-
-  @override
-  Future<void> setString(String key, String? value) async {
-    if (value == null) {
-      values.remove(key);
-    } else {
-      values[key] = value;
-    }
-  }
-
-  @override
-  Future<Map<String, String>> getAll() async => Map.of(values);
-}
-
-class _FakeAudioEngine implements AudioEngine {
-  @override
-  Stream<PlaybackSnapshot> get snapshots => const Stream.empty();
-
-  @override
-  PlaybackSnapshot get current => const PlaybackSnapshot();
-
-  @override
-  Future<void> openQueue({
-    required List<String> uris,
-    required int startIndex,
-    int? startPositionMs,
-  }) async {}
-
-  @override
-  Future<void> play() async {}
-
-  @override
-  Future<void> pause() async {}
-
-  @override
-  Future<void> seek(Duration position) async {}
-
-  @override
-  Future<void> skipToIndex(int index) async {}
-
-  @override
-  void setLoopMode(PlaybackLoopMode mode) {}
-
-  @override
-  Future<void> dispose() async {}
-}
+Song _song(int id) => Song(
+      id: id,
+      path: '/tmp/$id.flac',
+      sourceType: SourceType.local,
+      title: 'Song $id',
+      fileName: '$id.flac',
+      format: 'flac',
+      durationMs: 180000,
+      fileSizeBytes: 1024,
+      addedAtMs: 0,
+      modifiedAtMs: 0,
+      playCount: 0,
+      skipCount: 0,
+      totalPlayMs: 0,
+      lastPositionMs: 0,
+      isFavorite: false,
+    );
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-
-  // audio_service emits delayed platform-channel errors once its bootstrap
-  // is touched; guard the zone so plugin noise cannot fail assertions.
-  Future<void> runGuarded(Future<void> Function() body) {
-    final done = Completer<void>();
-    runZonedGuarded(
-      () async {
-        await body();
-        if (!done.isCompleted) done.complete();
-      },
-      (_, __) {
-        if (!done.isCompleted) done.complete();
-      },
-    );
-    return done.future;
-  }
 
   ProviderContainer makeContainer({
     Map<String, String> settings = const {},
@@ -158,12 +37,17 @@ void main() {
     return ProviderContainer(
       overrides: [
         libraryRepositoryProvider.overrideWithValue(
-          _FakeLibraryRepository(),
+          FakeLibraryRepository(
+            songs: [for (var id = 1; id <= 5; id++) _song(id)],
+          ),
         ),
         settingsRepositoryProvider.overrideWithValue(
-          _FakeSettingsRepository(Map.of(settings)),
+          FakeSettingsRepository(Map.of(settings)),
         ),
-        audioEngineProvider.overrideWith((ref) => _FakeAudioEngine()),
+        playbackRecordRepositoryProvider.overrideWithValue(
+          FakePlaybackRecordRepository(),
+        ),
+        audioEngineProvider.overrideWith((ref) => FakeAudioEngine()),
       ],
     );
   }
@@ -223,10 +107,11 @@ void main() {
             final notifier = await restoredWith5Songs(container);
 
             final first =
-          container.read(playerControllerProvider).currentIndex;
+                container.read(playerControllerProvider).currentIndex;
             await notifier.onNext();
             final second =
-            container.read(playerControllerProvider).currentIndex;
+                container.read(playerControllerProvider).currentIndex;
+            expect(second, isNot(first));
 
             await notifier.onPrevious();
             expect(
@@ -238,7 +123,7 @@ void main() {
             await notifier.onPrevious();
             expect(
               container.read(playerControllerProvider).currentIndex,
-              second,
+              first,
             );
           }));
 
@@ -261,7 +146,10 @@ void main() {
             await notifier.setShuffle(enabled: true);
             expect(container.read(playerControllerProvider).shuffleEnabled,
                 isTrue);
-            expect(settings['playback.shuffle'], 'true');
+            final saved = await container
+                .read(settingsRepositoryProvider)
+                .getString('playback.shuffle');
+            expect(saved, 'true');
           }));
 
   test('clearQueue forgets the random history', () => runGuarded(() async {
@@ -272,7 +160,7 @@ void main() {
           },
         );
         addTearDown(container.dispose);
-        final notifier = await restoredWith5Shuffled(container);
+        final notifier = await restoredWith5Songs(container);
 
         await notifier.clearQueue();
 
@@ -280,13 +168,4 @@ void main() {
         // internal memory was reset without throwing.
         expect(container.read(playerControllerProvider).queue, isEmpty);
       }));
-}
-
-Future<PlayerController> restoredWith5Shuffled(
-  ProviderContainer container,
-) async {
-  final notifier = container.read(playerControllerProvider.notifier);
-  await notifier.restoreSession();
-  await notifier.setShuffle(enabled: true);
-  return notifier;
 }

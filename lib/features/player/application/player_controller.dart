@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:audio_service/audio_service.dart';
@@ -11,15 +10,9 @@ import 'package:whisplayer/domain/entities/playback.dart';
 import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/domain/entities/source_type.dart';
 import 'package:whisplayer/domain/repositories/audio_engine.dart';
+import 'package:whisplayer/features/player/application/playback_recorder.dart';
+import 'package:whisplayer/features/player/application/playback_session_store.dart';
 import 'package:whisplayer/player/whis_audio_handler.dart';
-
-const _keyQueue = 'playback.queue_json';
-const _keyIndex = 'playback.index';
-const _keyPosition = 'playback.position_ms';
-const _keyLoop = 'playback.loop_mode';
-const _keyShuffle = 'playback.shuffle';
-const _restartThresholdMs = 3000;
-const _wrapDetectMs = 2000;
 
 class PlayerUiState {
   const PlayerUiState({
@@ -67,12 +60,9 @@ class PlayerController extends Notifier<PlayerUiState>
   bool _restored = false;
   bool _rebuilding = false;
   int _pendingPositionMs = 0;
-  int? _recordedIndex;
   final Random _random = Random();
   final List<int> _shuffleHistory = <int>[];
   final Set<int> _shuffledPlayed = <int>{};
-  int _lastPositionMs = 0;
-  bool _wasPlaying = false;
 
   @override
   PlayerUiState build() {
@@ -86,6 +76,11 @@ class PlayerController extends Notifier<PlayerUiState>
   }
 
   Future<AudioEngine> get _engine => ref.read(audioEngineProvider.future);
+
+  PlaybackSessionStore get _sessionStore =>
+      ref.read(playbackSessionStoreProvider);
+
+  PlaybackRecorder get _recorder => ref.read(playbackRecorderProvider);
 
   static const _handlerInitTimeout = Duration(seconds: 5);
 
@@ -113,56 +108,27 @@ class PlayerController extends Notifier<PlayerUiState>
     _restored = true;
     await _ensureSubscribed();
 
-    final settings = ref.read(settingsRepositoryProvider);
-    final idsJson = await settings.getString(_keyQueue);
-    final savedIndex =
-        int.tryParse(await settings.getString(_keyIndex) ?? '') ?? -1;
-    _pendingPositionMs =
-        int.tryParse(await settings.getString(_keyPosition) ?? '') ?? 0;
-    final loopName = await settings.getString(_keyLoop);
-    final shuffleSaved = await settings.getString(_keyShuffle);
-
-    var mode = PlaybackLoopMode.off;
-    for (final m in PlaybackLoopMode.values) {
-      if (m.name == loopName) {
-        mode = m;
-      }
-    }
+    final session = await _sessionStore.read();
+    _pendingPositionMs = session.positionMs;
 
     final library = ref.read(libraryRepositoryProvider);
     final byId = {
       for (final song in await library.getAllSongs()) song.id: song,
     };
     final queue = [
-      for (final id in _decodeIds(idsJson))
+      for (final id in session.queueIds)
         if (byId[id] != null) byId[id]!,
     ];
-
-    var index = savedIndex;
-    if (index >= queue.length) {
-      index = queue.isEmpty ? -1 : 0;
-    }
+    final index = session.resolveIndex(queue.length);
 
     state = state.copyWith(
       queue: queue,
       currentIndex: index,
-      loopMode: mode,
-      shuffleEnabled: shuffleSaved == 'true',
+      loopMode: session.loopMode,
+      shuffleEnabled: session.shuffleEnabled,
     );
-    (await _engine).setLoopMode(mode);
+    (await _engine).setLoopMode(session.loopMode);
     await _publishCurrentMediaItem();
-  }
-
-  List<int> _decodeIds(String? json) {
-    if (json == null || json.isEmpty) {
-      return const [];
-    }
-    try {
-      final raw = jsonDecode(json) as List<dynamic>;
-      return raw.whereType<int>().toList();
-    } on FormatException catch (_) {
-      return const [];
-    }
   }
 
   Future<void> _ensureSubscribed() async {
@@ -179,11 +145,24 @@ class PlayerController extends Notifier<PlayerUiState>
     final advanced =
         !_rebuilding && q >= 0 && q != index && q < state.queue.length;
     if (advanced) {
-      unawaited(_recordDeparture(index));
+      unawaited(_recorder.recordDeparture(
+        queue: state.queue,
+        index: index,
+      ));
       index = q;
-      _recordedIndex = null;
+      _recorder.clear();
     } else {
-      _detectLoopWrap(snap);
+      if (_recorder.isLoopWrap(
+        snap,
+        rebuilding: _rebuilding,
+        hasCurrent: state.hasCurrent,
+      )) {
+        unawaited(_recorder.recordFullListen(
+          song: state.currentSong,
+          currentIndex: state.currentIndex,
+          rearm: true,
+        ));
+      }
     }
 
     state = state.copyWith(
@@ -194,7 +173,11 @@ class PlayerController extends Notifier<PlayerUiState>
     if (!advanced &&
         snap.state == EngineState.completed &&
         state.hasCurrent) {
-      unawaited(_recordFullListen(rearm: false));
+      unawaited(_recorder.recordFullListen(
+        song: state.currentSong,
+        currentIndex: state.currentIndex,
+        rearm: false,
+      ));
     }
 
     if (advanced) {
@@ -211,55 +194,7 @@ class PlayerController extends Notifier<PlayerUiState>
       _saver = null;
       unawaited(_saveNow());
     }
-    _wasPlaying = snap.playing;
-    _lastPositionMs = snap.positionMs;
-  }
-
-  // Native LoopMode.one replays seamlessly without ever emitting
-  // EngineState.completed, so a finished listen can only be spotted by the
-  // playback position jumping backwards on the same track.
-  void _detectLoopWrap(PlaybackSnapshot snap) {
-    if (_rebuilding || !state.hasCurrent || !snap.playing) {
-      return;
-    }
-    if (_lastPositionMs - snap.positionMs <= _wrapDetectMs) {
-      return;
-    }
-    unawaited(_recordFullListen(rearm: true));
-  }
-
-  Future<void> _recordDeparture(int index) async {
-    if (index < 0 || index >= state.queue.length || _recordedIndex == index) {
-      return;
-    }
-    final listened = _wasPlaying || _lastPositionMs > 0;
-    if (!listened) {
-      return;
-    }
-    final song = state.queue[index];
-    final completed =
-        _lastPositionMs >= song.durationMs - _restartThresholdMs;
-    await ref.read(libraryRepositoryProvider).recordPlayback(
-          songId: song.id,
-          playedMs: _lastPositionMs,
-          playedAtMs: DateTime.now().millisecondsSinceEpoch,
-          completed: completed,
-        );
-    _recordedIndex = index;
-  }
-
-  Future<void> _recordFullListen({required bool rearm}) async {
-    final song = state.currentSong;
-    if (song == null || _recordedIndex == state.currentIndex) {
-      return;
-    }
-    await ref.read(libraryRepositoryProvider).recordPlayback(
-          songId: song.id,
-          playedMs: song.durationMs,
-          playedAtMs: DateTime.now().millisecondsSinceEpoch,
-          completed: true,
-        );
-    _recordedIndex = rearm ? null : state.currentIndex;
+    _recorder.noteSnapshot(snap);
   }
 
   Future<void> playSongs(List<Song> songs, {int startIndex = 0}) async {
@@ -292,7 +227,7 @@ class PlayerController extends Notifier<PlayerUiState>
       return;
     }
     if (snap.state == EngineState.completed) {
-      _recordedIndex = null;
+      _recorder.clear();
       await engine.seek(Duration.zero);
       await engine.skipToIndex(state.currentIndex);
       await engine.play();
@@ -332,7 +267,7 @@ class PlayerController extends Notifier<PlayerUiState>
     if (!state.hasCurrent) {
       return;
     }
-    if (state.snapshot.positionMs > _restartThresholdMs) {
+    if (state.snapshot.positionMs > PlaybackRecorder.restartThresholdMs) {
       await (await _engine).seek(Duration.zero);
       return;
     }
@@ -360,8 +295,11 @@ class PlayerController extends Notifier<PlayerUiState>
     // state.currentIndex is updated synchronously below, so the engine's
     // follow-up snapshot no longer reports an index advance; record the
     // departure of the current song here instead.
-    await _recordDeparture(state.currentIndex);
-    _recordedIndex = null;
+    await _recorder.recordDeparture(
+      queue: state.queue,
+      index: state.currentIndex,
+    );
+    _recorder.clear();
     state = state.copyWith(currentIndex: index);
     await (await _engine).skipToIndex(index);
     await _publishCurrentMediaItem();
@@ -376,9 +314,7 @@ class PlayerController extends Notifier<PlayerUiState>
     }
     state = state.copyWith(shuffleEnabled: enabled);
     _resetShuffleMemory();
-    await ref
-        .read(settingsRepositoryProvider)
-        .setString(_keyShuffle, enabled ? 'true' : 'false');
+    await _sessionStore.saveShuffle(enabled: enabled);
   }
 
   /// Random next index when shuffle is on; null otherwise. When every
@@ -415,9 +351,7 @@ class PlayerController extends Notifier<PlayerUiState>
         order[(order.indexOf(state.loopMode) + 1) % order.length];
     state = state.copyWith(loopMode: next);
     (await _engine).setLoopMode(next);
-    await ref
-        .read(settingsRepositoryProvider)
-        .setString(_keyLoop, next.name);
+    await _sessionStore.saveLoopMode(next);
   }
 
   Future<void> setNextFromLibrary(Song song) async {
@@ -453,7 +387,7 @@ class PlayerController extends Notifier<PlayerUiState>
       newIndex = index.clamp(0, queue.length - 1);
     }
     if (index == state.currentIndex) {
-      await _recordDeparture(index);
+      await _recorder.recordDeparture(queue: state.queue, index: index);
       final wasPlaying = state.snapshot.playing;
       await _applyQueue(queue, newIndex);
       if (wasPlaying) {
@@ -467,15 +401,16 @@ class PlayerController extends Notifier<PlayerUiState>
   Future<void> clearQueue() async {
     await _ensureSubscribed();
     await (await _engine).pause();
-    await _recordDeparture(state.currentIndex);
+    await _recorder.recordDeparture(
+      queue: state.queue,
+      index: state.currentIndex,
+    );
     _rebuilding = true;
     try {
       state = PlayerUiState(loopMode: state.loopMode);
       _pendingPositionMs = 0;
-      _recordedIndex = null;
+      _recorder.reset();
       _resetShuffleMemory();
-      _lastPositionMs = 0;
-      _wasPlaying = false;
       final handler = await _handler;
       handler
         ?..publishNowPlaying(null)
@@ -505,10 +440,8 @@ class PlayerController extends Notifier<PlayerUiState>
     int? startPositionMs,
   }) async {
     _rebuilding = true;
-    _recordedIndex = null;
+    _recorder.reset(positionMs: startPositionMs ?? 0);
     _resetShuffleMemory();
-    _lastPositionMs = startPositionMs ?? 0;
-    _wasPlaying = false;
     try {
       state = state.copyWith(queue: songs, currentIndex: index);
       final handler = await _handler;
@@ -585,15 +518,11 @@ class PlayerController extends Notifier<PlayerUiState>
   }
 
   Future<void> _persist(List<Song> queue, {int? positionMs}) async {
-    final settings = ref.read(settingsRepositoryProvider);
-    await settings.setString(
-      _keyQueue,
-      jsonEncode([for (final song in queue) song.id]),
+    await _sessionStore.saveQueue(
+      [for (final song in queue) song.id],
+      state.currentIndex,
+      positionMs: positionMs,
     );
-    await settings.setString(_keyIndex, '${state.currentIndex}');
-    if (positionMs != null) {
-      await settings.setString(_keyPosition, '$positionMs');
-    }
   }
 }
 
