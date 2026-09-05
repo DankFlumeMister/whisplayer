@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:whisplayer/core/providers/playback_providers.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
 
 class MiniPlayerBar extends ConsumerWidget {
@@ -12,6 +13,7 @@ class MiniPlayerBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(playerControllerProvider);
+    final positionMs = ref.watch(playbackPositionProvider);
     final song = state.currentSong;
     if (song == null) {
       return const SizedBox.shrink();
@@ -19,7 +21,7 @@ class MiniPlayerBar extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final duration = state.snapshot.durationMs;
     final progress =
-        duration > 0 ? state.snapshot.positionMs / duration : 0.0;
+        duration > 0 ? positionMs / duration : 0.0;
     final notifier = ref.read(playerControllerProvider.notifier);
 
     return GestureDetector(

@@ -51,6 +51,20 @@ playback position jumping backwards by more than 2 seconds on the same
 track.
 _Avoid_: Loop detection, replay
 
+**PlaybackPosition**:
+The narrow transport channel carrying the current position in
+milliseconds. It updates on every engine tick while the session state only
+changes on transitions, so position consumers do not rebuild the whole
+player UI at tick frequency.
+_Avoid_: Player state, snapshot
+
+**MediaSession**:
+The system media-session protocol the player publishes to: now-playing
+item, queue, and the next/previous commands the system can issue back to
+the player. WhisAudioHandler is the production adapter; tests inject a
+fake, so bootstrap failures never reach playback code.
+_Avoid_: audio_service, notification handler
+
 ## Library
 
 **Local source / Remote source**:

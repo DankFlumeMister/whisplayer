@@ -9,7 +9,6 @@ import 'package:whisplayer/domain/entities/source_type.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
 
 import 'helpers/fakes.dart';
-import 'helpers/run_guarded.dart';
 
 Song _song(int id) => Song(
       id: id,
@@ -51,6 +50,7 @@ void main() {
           FakeSettingsRepository(),
         ),
         playbackRecordRepositoryProvider.overrideWithValue(records),
+        playerHandlerProvider.overrideWith((ref) => FakeMediaSession()),
         audioEngineProvider.overrideWith((ref) => engine),
       ],
     );
@@ -59,175 +59,173 @@ void main() {
     return container;
   }
 
-  test('natural completion records exactly one full listen',
-      () => runGuarded(() async {
-            final engine = FakeAudioEngine();
-            final records = FakePlaybackRecordRepository();
-            final container = await makeContainer(
-              songs: [_song(1)],
-              engine: engine,
-              records: records,
-            );
+  test('natural completion records exactly one full listen', () async {
+    final engine = FakeAudioEngine();
+    final records = FakePlaybackRecordRepository();
+    final container = await makeContainer(
+      songs: [_song(1)],
+      engine: engine,
+      records: records,
+    );
 
-            await container
-                .read(playerControllerProvider.notifier)
-                .playSongs([_song(1)]);
+    await container.read(playerControllerProvider.notifier).playSongs(
+          [_song(1)],
+        );
 
-            engine.emit(
-              const PlaybackSnapshot(
-                state: EngineState.ready,
-                playing: true,
-                positionMs: 5000,
-                queueIndex: 0,
-              ),
-            );
-            await settle();
-            expect(records.plays, isEmpty);
+    engine.emit(
+      const PlaybackSnapshot(
+        state: EngineState.ready,
+        playing: true,
+        positionMs: 5000,
+        queueIndex: 0,
+      ),
+    );
+    await settle();
+    expect(records.plays, isEmpty);
 
-            engine.emit(
-              const PlaybackSnapshot(
-                state: EngineState.completed,
-                positionMs: 180000,
-                queueIndex: 0,
-              ),
-            );
-            await settle();
-            expect(records.plays, ['1:180000:true']);
-          }));
+    engine.emit(
+      const PlaybackSnapshot(
+        state: EngineState.completed,
+        positionMs: 180000,
+        queueIndex: 0,
+      ),
+    );
+    await settle();
+    expect(records.plays, ['1:180000:true']);
+  });
 
-  test('skipping away mid-song records an incomplete listen',
-      () => runGuarded(() async {
-            final engine = FakeAudioEngine();
-            final records = FakePlaybackRecordRepository();
-            final container = await makeContainer(
-              songs: [_song(1), _song(2)],
-              engine: engine,
-              records: records,
-            );
+  test('skipping away mid-song records an incomplete listen', () async {
+    final engine = FakeAudioEngine();
+    final records = FakePlaybackRecordRepository();
+    final container = await makeContainer(
+      songs: [_song(1), _song(2)],
+      engine: engine,
+      records: records,
+    );
 
-            await container
-                .read(playerControllerProvider.notifier)
-                .playSongs([_song(1), _song(2)]);
+    await container.read(playerControllerProvider.notifier).playSongs(
+          [_song(1), _song(2)],
+        );
 
-            engine.emit(
-              const PlaybackSnapshot(
-                state: EngineState.ready,
-                playing: true,
-                positionMs: 30000,
-                queueIndex: 0,
-              ),
-            );
-            await settle();
-            engine.emit(
-              const PlaybackSnapshot(
-                state: EngineState.ready,
-                playing: true,
-                queueIndex: 1,
-              ),
-            );
-            await settle();
+    engine.emit(
+      const PlaybackSnapshot(
+        state: EngineState.ready,
+        playing: true,
+        positionMs: 30000,
+        queueIndex: 0,
+      ),
+    );
+    await settle();
+    engine.emit(
+      const PlaybackSnapshot(
+        state: EngineState.ready,
+        playing: true,
+        queueIndex: 1,
+      ),
+    );
+    await settle();
 
-            expect(records.plays, ['1:30000:false']);
-          }));
+    expect(records.plays, ['1:30000:false']);
+  });
 
   test('completion followed by auto-advance is not double recorded',
-      () => runGuarded(() async {
-            final engine = FakeAudioEngine();
-            final records = FakePlaybackRecordRepository();
-            final container = await makeContainer(
-              songs: [_song(1), _song(2)],
-              engine: engine,
-              records: records,
-            );
+      () async {
+    final engine = FakeAudioEngine();
+    final records = FakePlaybackRecordRepository();
+    final container = await makeContainer(
+      songs: [_song(1), _song(2)],
+      engine: engine,
+      records: records,
+    );
 
-            await container
-                .read(playerControllerProvider.notifier)
-                .playSongs([_song(1), _song(2)]);
+    await container.read(playerControllerProvider.notifier).playSongs(
+          [_song(1), _song(2)],
+        );
 
-            engine.emit(
-              const PlaybackSnapshot(
-                state: EngineState.ready,
-                playing: true,
-                positionMs: 179000,
-                queueIndex: 0,
-              ),
-            );
-            await settle();
-            engine.emit(
-              const PlaybackSnapshot(
-                state: EngineState.completed,
-                positionMs: 180000,
-                queueIndex: 0,
-              ),
-            );
-            await settle();
-            engine.emit(
-              const PlaybackSnapshot(
-                state: EngineState.ready,
-                playing: true,
-                queueIndex: 1,
-              ),
-            );
-            await settle();
+    engine.emit(
+      const PlaybackSnapshot(
+        state: EngineState.ready,
+        playing: true,
+        positionMs: 179000,
+        queueIndex: 0,
+      ),
+    );
+    await settle();
+    engine.emit(
+      const PlaybackSnapshot(
+        state: EngineState.completed,
+        positionMs: 180000,
+        queueIndex: 0,
+      ),
+    );
+    await settle();
+    engine.emit(
+      const PlaybackSnapshot(
+        state: EngineState.ready,
+        playing: true,
+        queueIndex: 1,
+      ),
+    );
+    await settle();
 
-            expect(records.plays, ['1:180000:true']);
-          }));
+    expect(records.plays, ['1:180000:true']);
+  });
 
   test('native loop-one wrap records every finished playthrough',
-      () => runGuarded(() async {
-            final engine = FakeAudioEngine();
-            final records = FakePlaybackRecordRepository();
-            final container = await makeContainer(
-              songs: [_song(1)],
-              engine: engine,
-              records: records,
-            );
+      () async {
+    final engine = FakeAudioEngine();
+    final records = FakePlaybackRecordRepository();
+    final container = await makeContainer(
+      songs: [_song(1)],
+      engine: engine,
+      records: records,
+    );
 
-            await container
-                .read(playerControllerProvider.notifier)
-                .playSongs([_song(1)]);
+    await container.read(playerControllerProvider.notifier).playSongs(
+          [_song(1)],
+        );
 
-            const playing = EngineState.ready;
-            engine.emit(
-              const PlaybackSnapshot(
-                state: playing,
-                playing: true,
-                positionMs: 100000,
-                queueIndex: 0,
-              ),
-            );
-            await settle();
-            engine.emit(
-              const PlaybackSnapshot(
-                state: playing,
-                playing: true,
-                positionMs: 1000,
-                queueIndex: 0,
-              ),
-            );
-            await settle();
-            engine.emit(
-              const PlaybackSnapshot(
-                state: playing,
-                playing: true,
-                positionMs: 150000,
-                queueIndex: 0,
-              ),
-            );
-            await settle();
-            engine.emit(
-              const PlaybackSnapshot(
-                state: playing,
-                playing: true,
-                positionMs: 800,
-                queueIndex: 0,
-              ),
-            );
-            await settle();
+    const playing = EngineState.ready;
+    engine.emit(
+      const PlaybackSnapshot(
+        state: playing,
+        playing: true,
+        positionMs: 100000,
+        queueIndex: 0,
+      ),
+    );
+    await settle();
+    engine.emit(
+      const PlaybackSnapshot(
+        state: playing,
+        playing: true,
+        positionMs: 1000,
+        queueIndex: 0,
+      ),
+    );
+    await settle();
+    engine.emit(
+      const PlaybackSnapshot(
+        state: playing,
+        playing: true,
+        positionMs: 150000,
+        queueIndex: 0,
+      ),
+    );
+    await settle();
+    engine.emit(
+      const PlaybackSnapshot(
+        state: playing,
+        playing: true,
+        positionMs: 800,
+        queueIndex: 0,
+      ),
+    );
+    await settle();
 
-            expect(
-              records.plays,
-              ['1:180000:true', '1:180000:true'],
-            );
-          }));
+    expect(
+      records.plays,
+      ['1:180000:true', '1:180000:true'],
+    );
+  });
 }

@@ -7,7 +7,6 @@ import 'package:whisplayer/core/providers/playback_providers.dart';
 import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/core/providers/scanner_providers.dart';
 import 'package:whisplayer/data/metadata/isolate_metadata_reader.dart';
-import 'package:whisplayer/domain/entities/playback.dart';
 import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/domain/entities/source_type.dart';
 import 'package:whisplayer/domain/lyrics/lyric_parser.dart';
@@ -66,23 +65,22 @@ class LyricsUiState {
 }
 
 class LyricsController extends Notifier<LyricsUiState> {
-  StreamSubscription<PlaybackSnapshot>? _positionSub;
   final _rawCache = <int, String>{};
   int? _loadedSongId;
-  int _lastPositionMs = 0;
+  bool _settingsLoaded = false;
 
   static const _sidecarExtensions = ['.lrc', '.vtt', '.srt'];
 
   @override
   LyricsUiState build() {
-    ref.onDispose(() {
-      unawaited(_positionSub?.cancel());
-    });
     ref.listen(playerControllerProvider, (previous, next) {
       final song = next.currentSong;
       if (song != null && song.id != _loadedSongId) {
         unawaited(_loadFor(song));
       }
+    });
+    ref.listen(playbackPositionProvider, (previous, next) {
+      _onPosition(next);
     });
     final current = ref.read(playerControllerProvider).currentSong;
     if (current != null && current.id != _loadedSongId) {
@@ -90,17 +88,6 @@ class LyricsController extends Notifier<LyricsUiState> {
     }
     return const LyricsUiState();
   }
-
-  Future<void> _initPositionListener() async {
-    if (_positionSub != null) {
-      return;
-    }
-    final engine = await ref.read(audioEngineProvider.future);
-    _positionSub = engine.snapshots.listen(_onPosition);
-    await _loadSettingsOnce();
-  }
-
-  bool _settingsLoaded = false;
 
   Future<void> _loadSettingsOnce() async {
     if (_settingsLoaded) {
@@ -128,21 +115,20 @@ class LyricsController extends Notifier<LyricsUiState> {
     );
   }
 
-  void _onPosition(PlaybackSnapshot snap) {
-    _lastPositionMs = snap.positionMs;
+  void _onPosition(int positionMs) {
     if (!state.document.synced) {
       return;
     }
     final index = state.document
         .shifted(state.offsetMs)
-        .indexAt(_lastPositionMs);
+        .indexAt(positionMs);
     if (index != state.activeIndex) {
       state = state.copyWith(activeIndex: index);
     }
   }
 
   Future<void> _loadFor(Song song) async {
-    await _initPositionListener();
+    await _loadSettingsOnce();
     _loadedSongId = song.id;
     state = state.copyWith(
       status: LyricsStatus.loading,

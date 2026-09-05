@@ -5,18 +5,13 @@ import 'package:audio_session/audio_session.dart';
 
 import 'package:whisplayer/domain/entities/playback.dart';
 import 'package:whisplayer/domain/repositories/audio_engine.dart';
+import 'package:whisplayer/player/media_session.dart';
 
-abstract class SessionDelegate {
-  Future<void> onNext();
-
-  Future<void> onPrevious();
-}
-
-class WhisAudioHandler extends BaseAudioHandler {
+class WhisAudioHandler extends BaseAudioHandler implements MediaSession {
   WhisAudioHandler._(this._engine);
 
   final AudioEngine _engine;
-  SessionDelegate? delegate;
+  SessionDelegate? _delegate;
   bool _engineBound = false;
 
   static WhisAudioHandler? _active;
@@ -66,10 +61,17 @@ class WhisAudioHandler extends BaseAudioHandler {
     _engine.snapshots.listen(_publishSystemState);
   }
 
+  @override
+  void bindSession(SessionDelegate delegate) {
+    _delegate = delegate;
+  }
+
+  @override
   void publishNowPlaying(MediaItem? item) {
     mediaItem.add(item);
   }
 
+  @override
   void publishQueue(List<MediaItem> items) {
     queue.add(items);
   }
@@ -85,12 +87,12 @@ class WhisAudioHandler extends BaseAudioHandler {
 
   @override
   Future<void> skipToNext() async {
-    await delegate?.onNext();
+    await _delegate?.onNext();
   }
 
   @override
   Future<void> skipToPrevious() async {
-    await delegate?.onPrevious();
+    await _delegate?.onPrevious();
   }
 
   @override

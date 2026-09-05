@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:whisplayer/core/providers/playback_providers.dart';
 import 'package:whisplayer/domain/entities/playback.dart';
 import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/features/player/application/lyrics_controller.dart';
@@ -111,6 +112,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(playerControllerProvider);
+    final positionMs = ref.watch(playbackPositionProvider);
     final song = state.currentSong;
     final scheme = Theme.of(context).colorScheme;
     final snap = state.snapshot;
@@ -121,7 +123,7 @@ class _PlayerPageState extends ConsumerState<PlayerPage> {
       );
     }
 
-    final position = _dragValue ?? snap.positionMs.toDouble();
+    final position = _dragValue ?? positionMs.toDouble();
     final durationMs = snap.durationMs > 0
         ? snap.durationMs
         : (song.durationMs > 0 ? song.durationMs : 1);

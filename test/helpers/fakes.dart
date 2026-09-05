@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:audio_service/audio_service.dart';
+
 import 'package:whisplayer/domain/entities/album.dart';
 import 'package:whisplayer/domain/entities/artist.dart';
 import 'package:whisplayer/domain/entities/play_history_entry.dart';
@@ -12,6 +14,7 @@ import 'package:whisplayer/domain/repositories/playback_record_repository.dart';
 import 'package:whisplayer/domain/repositories/playlist_repository.dart';
 import 'package:whisplayer/domain/repositories/settings_repository.dart';
 import 'package:whisplayer/features/library/domain/browse_prefs.dart';
+import 'package:whisplayer/player/media_session.dart';
 
 /// In-memory [SettingsRepository]; `setString(key, null)` removes the key.
 class FakeSettingsRepository implements SettingsRepository {
@@ -215,5 +218,28 @@ class FakeHistoryRepository implements HistoryRepository {
           totalPlayedMs: 0,
           completedPlays: 0,
         );
+  }
+}
+
+/// In-memory [MediaSession]; keeps the last published item, every
+/// published queue and the bound delegate for assertions.
+class FakeMediaSession implements MediaSession {
+  MediaItem? lastNowPlaying;
+  final List<List<MediaItem>> publishedQueues = <List<MediaItem>>[];
+  SessionDelegate? boundDelegate;
+
+  @override
+  void bindSession(SessionDelegate delegate) {
+    boundDelegate = delegate;
+  }
+
+  @override
+  void publishNowPlaying(MediaItem? item) {
+    lastNowPlaying = item;
+  }
+
+  @override
+  void publishQueue(List<MediaItem> items) {
+    publishedQueues.add(items);
   }
 }

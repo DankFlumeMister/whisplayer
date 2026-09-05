@@ -12,7 +12,7 @@ import 'package:whisplayer/domain/entities/source_type.dart';
 import 'package:whisplayer/domain/repositories/audio_engine.dart';
 import 'package:whisplayer/features/player/application/playback_recorder.dart';
 import 'package:whisplayer/features/player/application/playback_session_store.dart';
-import 'package:whisplayer/player/whis_audio_handler.dart';
+import 'package:whisplayer/player/media_session.dart';
 
 class PlayerUiState {
   const PlayerUiState({
@@ -59,6 +59,7 @@ class PlayerController extends Notifier<PlayerUiState>
   Timer? _saver;
   bool _restored = false;
   bool _rebuilding = false;
+  bool _sessionBound = false;
   int _pendingPositionMs = 0;
   final Random _random = Random();
   final List<int> _shuffleHistory = <int>[];
@@ -77,6 +78,11 @@ class PlayerController extends Notifier<PlayerUiState>
 
   Future<AudioEngine> get _engine => ref.read(audioEngineProvider.future);
 
+  PlaybackPositionNotifier get _position =>
+      ref.read(playbackPositionProvider.notifier);
+
+  int get _positionMs => ref.read(playbackPositionProvider);
+
   PlaybackSessionStore get _sessionStore =>
       ref.read(playbackSessionStoreProvider);
 
@@ -84,11 +90,16 @@ class PlayerController extends Notifier<PlayerUiState>
 
   static const _handlerInitTimeout = Duration(seconds: 5);
 
-  Future<WhisAudioHandler?> get _handler async {
+  Future<MediaSession?> get _handler async {
     try {
-      return await ref
+      final handler = await ref
           .read(playerHandlerProvider.future)
           .timeout(_handlerInitTimeout);
+      if (!_sessionBound) {
+        _sessionBound = true;
+        handler.bindSession(this);
+      }
+      return handler;
     } on Exception {
       return null;
     }
@@ -165,34 +176,45 @@ class PlayerController extends Notifier<PlayerUiState>
       }
     }
 
-    state = state.copyWith(
-      snapshot: snap,
-      currentIndex: advanced ? q : null,
-    );
-
-    if (!advanced &&
-        snap.state == EngineState.completed &&
-        state.hasCurrent) {
-      unawaited(_recorder.recordFullListen(
-        song: state.currentSong,
-        currentIndex: state.currentIndex,
-        rearm: false,
-      ));
-    }
-
-    if (advanced) {
-      unawaited(_publishCurrentMediaItem());
-      unawaited(_saveNow());
-    }
-    if (snap.playing && _saver == null) {
-      _saver = Timer.periodic(
-        const Duration(seconds: 5),
-        (_) => unawaited(_saveNow()),
+    final previous = state.snapshot;
+    final transition = advanced ||
+        snap.state != previous.state ||
+        snap.playing != previous.playing ||
+        snap.durationMs != previous.durationMs ||
+        snap.queueIndex != previous.queueIndex;
+    if (transition) {
+      state = state.copyWith(
+        snapshot: snap,
+        currentIndex: advanced ? q : null,
       );
-    } else if (!snap.playing && _saver != null) {
-      _saver?.cancel();
-      _saver = null;
-      unawaited(_saveNow());
+      _position.positionMs = snap.positionMs;
+
+      if (!advanced &&
+          snap.state == EngineState.completed &&
+          state.hasCurrent) {
+        unawaited(_recorder.recordFullListen(
+          song: state.currentSong,
+          currentIndex: state.currentIndex,
+          rearm: false,
+        ));
+      }
+
+      if (advanced) {
+        unawaited(_publishCurrentMediaItem());
+        unawaited(_saveNow());
+      }
+      if (snap.playing && _saver == null) {
+        _saver = Timer.periodic(
+          const Duration(seconds: 5),
+          (_) => unawaited(_saveNow()),
+        );
+      } else if (!snap.playing && _saver != null) {
+        _saver?.cancel();
+        _saver = null;
+        unawaited(_saveNow());
+      }
+    } else {
+      _position.positionMs = snap.positionMs;
     }
     _recorder.noteSnapshot(snap);
   }
@@ -267,7 +289,7 @@ class PlayerController extends Notifier<PlayerUiState>
     if (!state.hasCurrent) {
       return;
     }
-    if (state.snapshot.positionMs > PlaybackRecorder.restartThresholdMs) {
+    if (_positionMs > PlaybackRecorder.restartThresholdMs) {
       await (await _engine).seek(Duration.zero);
       return;
     }
@@ -409,6 +431,7 @@ class PlayerController extends Notifier<PlayerUiState>
     try {
       state = PlayerUiState(loopMode: state.loopMode);
       _pendingPositionMs = 0;
+      _position.reset();
       _recorder.reset();
       _resetShuffleMemory();
       final handler = await _handler;
@@ -426,7 +449,7 @@ class PlayerController extends Notifier<PlayerUiState>
     int? forcedIndex,
   }) async {
     final wasPlaying = state.snapshot.playing;
-    final position = state.snapshot.positionMs;
+    final position = _positionMs;
     final index = forcedIndex ?? state.currentIndex;
     await _applyQueue(queue, index, startPositionMs: position);
     if (wasPlaying) {
@@ -441,6 +464,7 @@ class PlayerController extends Notifier<PlayerUiState>
   }) async {
     _rebuilding = true;
     _recorder.reset(positionMs: startPositionMs ?? 0);
+    _position.reset();
     _resetShuffleMemory();
     try {
       state = state.copyWith(queue: songs, currentIndex: index);
@@ -513,7 +537,7 @@ class PlayerController extends Notifier<PlayerUiState>
     }
     await _persist(
       state.queue,
-      positionMs: state.snapshot.positionMs,
+      positionMs: _positionMs,
     );
   }
 

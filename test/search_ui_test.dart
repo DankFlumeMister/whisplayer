@@ -54,6 +54,7 @@ void main() {
           playbackRecordRepositoryProvider.overrideWithValue(
             FakePlaybackRecordRepository(),
           ),
+          playerHandlerProvider.overrideWith((ref) => FakeMediaSession()),
           audioEngineProvider.overrideWith((ref) => engine),
         ],
         child: const WhisplayerApp(),
