@@ -84,6 +84,8 @@ class RemoteLibraryService {
   final Map<int, NavidromeClient> _navClients = <int, NavidromeClient>{};
   final Map<int, Map<String, List<NavidromeSong>>> _folderCache =
       <int, Map<String, List<NavidromeSong>>>{};
+  final Map<int, Map<String, SubsonicAlbum>> _albumsByNameCache =
+      <int, Map<String, SubsonicAlbum>>{};
   final _CoverGate _coverGate = _CoverGate(3);
 
   /// Builds an authenticated client for [server].
@@ -115,6 +117,27 @@ class RemoteLibraryService {
   }) async {
     final client = await clientForServerId(serverId);
     return client.getAlbumList2(size: size, offset: offset);
+  }
+
+  /// Fetches every album from the server by paging [fetchAlbums] until a short
+  /// page or the [maxOffset] guard is hit. Callers no longer manage the
+  /// `while(true)` offset loop — one await returns the full list.
+  Future<List<SubsonicAlbum>> fetchAllAlbums(
+    int serverId, {
+    int pageSize = 500,
+    int maxOffset = 10000,
+  }) async {
+    final all = <SubsonicAlbum>[];
+    var offset = 0;
+    while (true) {
+      final page = await fetchAlbums(serverId, size: pageSize, offset: offset);
+      all.addAll(page);
+      if (page.length < pageSize || offset > maxOffset) {
+        break;
+      }
+      offset += page.length;
+    }
+    return all;
   }
 
   Future<SubsonicAlbumDetail> fetchAlbum(int serverId, String albumId) async {
@@ -264,14 +287,20 @@ class RemoteLibraryService {
       '${dir.path}${Platform.pathSeparator}${server.id}_$digest.jpg',
     );
     if (file.existsSync()) {
-      return file.path;
+      if (file.lengthSync() >= _minCoverBytes) {
+        return file.path;
+      }
+      // Junk payload cached by an older build (Navidrome answers unknown
+      // cover ids with a 200 + tiny JSON error body) — drop and re-fetch.
+      await file.delete();
     }
     try {
       final client = await clientFor(server);
+      final uri = client.coverArtUri(coverArtId, size: size);
       final bytes = Uint8List.fromList(
-        await client.getBytes(client.coverArtUri(coverArtId, size: size)),
+        await client.getBytes(uri),
       );
-      if (bytes.isEmpty) {
+      if (!_looksLikeImage(bytes)) {
         return null;
       }
       await dir.create(recursive: true);
@@ -281,6 +310,26 @@ class RemoteLibraryService {
       return null;
     }
   }
+
+  /// Navidrome returns HTTP 200 with a small JSON error body for unknown
+  /// cover ids; only bytes that actually look like an image are cached.
+  static bool _looksLikeImage(List<int> bytes) {
+    if (bytes.length < _minCoverBytes) {
+      return false;
+    }
+    return (bytes[0] == 0xFF && bytes[1] == 0xD8) || // JPEG
+        (bytes[0] == 0x89 &&
+            bytes[1] == 0x50 &&
+            bytes[2] == 0x4E &&
+            bytes[3] == 0x47) || // PNG
+        (bytes[0] == 0x52 &&
+            bytes[1] == 0x49 &&
+            bytes[2] == 0x46 &&
+            bytes[3] == 0x46) || // RIFF (WebP)
+        (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46); // GIF
+  }
+
+  static const int _minCoverBytes = 256;
 
   Future<String?> _cacheAlbumCover(
     RemoteServer server,
@@ -380,9 +429,9 @@ class RemoteLibraryService {
     int serverId, {
     bool refresh = false,
   }) async {
+    final server = await _findServer(serverId);
     var tree = refresh ? null : _folderCache[serverId];
     if (tree == null) {
-      final server = await _findServer(serverId);
       final client = await navidromeClientFor(server);
       final songs = await client.fetchAllSongs();
       tree = <String, List<NavidromeSong>>{};
@@ -397,6 +446,7 @@ class RemoteLibraryService {
           name: entry.key,
           songCount: entry.value.length,
           coverSongId: _firstCoverSongId(entry.value),
+          coverAlbumId: _firstAlbumId(entry.value),
         ),
     ]..sort((a, b) => a.name.compareTo(b.name));
     return summaries;
@@ -409,6 +459,95 @@ class RemoteLibraryService {
       }
     }
     return null;
+  }
+
+  String? _firstAlbumId(List<NavidromeSong> songs) {
+    for (final song in songs) {
+      final album = song.album;
+      final id = song.albumId;
+      // Untagged files all land in the shared placeholder album; its cover
+      // must not stand in for every folder, or every no-art folder would
+      // render the same image.
+      final meaningful = album != null &&
+          album.isNotEmpty &&
+          !(album.startsWith('[') && album.endsWith(']'));
+      if (meaningful && id != null && id.isNotEmpty) {
+        return id;
+      }
+    }
+    return null;
+  }
+
+  /// Caches the album's cover art and returns its local path.
+  ///
+  /// Album-level fallback for folders whose files carry no embedded art:
+  /// Navidrome exposes folder.jpg art on the album, not on the songs
+  /// inside it, so a song-level donor may not exist even though the work
+  /// visibly has art.
+  Future<String?> albumCover({
+    required RemoteServer server,
+    required String albumId,
+    int size = 300,
+    Directory? baseDir,
+  }) async {
+    try {
+      final detail = await fetchAlbum(server.id, albumId);
+      final coverArt = detail.album.coverArt;
+      if (coverArt == null || coverArt.isEmpty) {
+        return null;
+      }
+      return await cacheCover(
+        server: server,
+        coverArtId: coverArt,
+        size: size,
+        baseDir: baseDir,
+      );
+    } on Exception {
+      return null;
+    }
+  }
+
+  /// Resolves a folder's cover through the album list: untagged works get
+  /// folder-based albums from Navidrome (named after the directory), so
+  /// the folder name maps to an album whose cover stands in for the tile.
+  ///
+  /// The album list is fetched once per server and kept in memory; any
+  /// failure yields null so callers degrade to placeholder art.
+  Future<String?> folderAlbumCover({
+    required RemoteServer server,
+    required String folderName,
+    int size = 300,
+    Directory? baseDir,
+  }) async {
+    try {
+      final albums = await _albumsByName(server);
+      final album = albums[folderName];
+      if (album == null || album.coverArt == null || album.coverArt!.isEmpty) {
+        return null;
+      }
+      return await cacheCover(
+        server: server,
+        coverArtId: album.coverArt!,
+        size: size,
+        baseDir: baseDir,
+      );
+    } on Exception {
+      return null;
+    }
+  }
+
+  Future<Map<String, SubsonicAlbum>> _albumsByName(RemoteServer server) async {
+    final cached = _albumsByNameCache[server.id];
+    if (cached != null) {
+      return cached;
+    }
+    final all = await fetchAllAlbums(server.id);
+    final byName = <String, SubsonicAlbum>{
+      for (final album in all)
+        if (album.name.isNotEmpty) album.name: album,
+    };
+    _albumsByNameCache[server.id] = byName;
+    return byName;
   }
 
   /// Every song inside one work folder, sub-folders flattened, ordered by
@@ -524,6 +663,7 @@ class RemoteFolderSummary {
     required this.name,
     required this.songCount,
     this.coverSongId,
+    this.coverAlbumId,
   });
 
   final String name;
@@ -531,6 +671,10 @@ class RemoteFolderSummary {
 
   /// Song id whose embedded cover represents this folder, if any.
   final String? coverSongId;
+
+  /// Album id whose cover stands in for the folder when no song carries
+  /// embedded art (Navidrome exposes folder.jpg at the album level).
+  final String? coverAlbumId;
 }
 
 /// Fair semaphore capping concurrent cover downloads so a fresh grid never

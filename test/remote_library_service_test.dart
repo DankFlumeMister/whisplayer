@@ -353,12 +353,13 @@ void main() {
 
     test('downloads once, caches to disk and reuses the hit', () async {
       var requests = 0;
+      final jpeg = <int>[0xFF, 0xD8, ...List<int>.filled(300, 0)];
       final svc = serviceWith(
         MockClient((req) async {
           requests++;
           expect(req.url.path, '/rest/getCoverArt');
           return http.Response.bytes(
-            <int>[1, 2, 3, 4],
+            jpeg,
             200,
             headers: {'content-type': 'image/jpeg'},
           );
@@ -371,7 +372,7 @@ void main() {
         baseDir: tempDir,
       );
       expect(first, isNotNull);
-      expect(File(first!).readAsBytesSync(), <int>[1, 2, 3, 4]);
+      expect(File(first!).readAsBytesSync(), jpeg);
 
       final second = await svc.cacheCover(
         server: servers.servers.first,
@@ -395,6 +396,276 @@ void main() {
         baseDir: tempDir,
       );
       expect(result, isNull);
+      expect(tempDir.listSync(), isEmpty);
+    });
+
+    test('rejects non-image payloads (Navidrome JSON error bodies)',
+        () async {
+      final svc = serviceWith(
+        MockClient(
+          (_) async => http.Response(
+            '{"subsonic-response":{"status":"failed"}}',
+            200,
+          ),
+        ),
+      );
+      final result = await svc.cacheCover(
+        server: servers.servers.first,
+        coverArtId: 'so-unknown',
+        baseDir: tempDir,
+      );
+      expect(result, isNull);
+      expect(tempDir.listSync(), isEmpty,
+          reason: 'junk bytes must never be cached as a cover');
+    });
+
+    test('replaces a stale tiny cached file instead of serving it',
+        () async {
+      var requests = 0;
+      final svc = serviceWith(
+        MockClient((req) async {
+          requests++;
+          return http.Response.bytes(
+            // Minimal valid JPEG magic + padding above the size floor.
+            <int>[
+              0xFF,
+              0xD8,
+              ...List<int>.filled(300, 0),
+            ],
+            200,
+          );
+        }),
+      );
+
+      final first = await svc.cacheCover(
+        server: servers.servers.first,
+        coverArtId: 'so-1',
+        baseDir: tempDir,
+      );
+      expect(first, isNotNull);
+
+      // Simulate the junk left behind by an older build: same key, tiny
+      // body. The next call must drop it and re-download.
+      final cached = File(
+        tempDir.listSync().first.path,
+      );
+      await cached.writeAsBytes(<int>[1, 2, 3, 4, 5]);
+      expect(cached.lengthSync(), lessThan(256));
+
+      final second = await svc.cacheCover(
+        server: servers.servers.first,
+        coverArtId: 'so-1',
+        baseDir: tempDir,
+      );
+      expect(second, isNotNull);
+      expect(cached.lengthSync(), greaterThanOrEqualTo(256));
+      expect(requests, 2,
+          reason: 'the tiny stale file must be re-fetched');
+    });
+  });
+
+  group('albumCover', () {
+    late Directory tempDir;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('album_cover_test');
+    });
+
+    tearDown(() async {
+      if (tempDir.existsSync()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    RemoteLibraryService serviceWith(MockClient client) =>
+        RemoteLibraryService(
+          servers,
+          writer,
+          library,
+          clientFactory: (baseUrl, username, password) => SubsonicClient(
+            baseUrl: baseUrl,
+            username: username,
+            password: password,
+            client: client,
+          ),
+        );
+
+    http.Response albumResponse({String? coverArt}) => http.Response(
+          jsonEncode({
+            'subsonic-response': {
+              'status': 'ok',
+              'album': {
+                'id': 'al-1',
+                'name': 'Album One',
+                if (coverArt != null) 'coverArt': coverArt,
+              },
+              'song': <Object>[],
+            },
+          }),
+          200,
+        );
+
+    test('resolves the album cover and caches it', () async {
+      var coverRequests = 0;
+      final jpeg = <int>[0xFF, 0xD8, ...List<int>.filled(300, 0)];
+      final svc = serviceWith(
+        MockClient((req) async {
+          if (req.url.path == '/rest/getAlbum') {
+            return albumResponse(coverArt: 'ca-1');
+          }
+          if (req.url.path == '/rest/getCoverArt') {
+            coverRequests++;
+            return http.Response.bytes(jpeg, 200);
+          }
+          return http.Response('nope', 404);
+        }),
+      );
+
+      final first = await svc.albumCover(
+        server: servers.servers.first,
+        albumId: 'al-1',
+        baseDir: tempDir,
+      );
+      expect(first, isNotNull);
+      expect(File(first!).readAsBytesSync(), jpeg);
+
+      final second = await svc.albumCover(
+        server: servers.servers.first,
+        albumId: 'al-1',
+        baseDir: tempDir,
+      );
+      expect(second, first);
+      expect(coverRequests, 1,
+          reason: 'second call must be served from the disk cache');
+    });
+
+    test('returns null when the album has no cover art', () async {
+      var coverRequests = 0;
+      final svc = serviceWith(
+        MockClient((req) async {
+          if (req.url.path == '/rest/getAlbum') {
+            return albumResponse();
+          }
+          if (req.url.path == '/rest/getCoverArt') {
+            coverRequests++;
+            return http.Response.bytes(<int>[1], 200);
+          }
+          return http.Response('nope', 404);
+        }),
+      );
+
+      final result = await svc.albumCover(
+        server: servers.servers.first,
+        albumId: 'al-1',
+        baseDir: tempDir,
+      );
+      expect(result, isNull);
+      expect(coverRequests, 0);
+      expect(tempDir.listSync(), isEmpty);
+    });
+  });
+
+  group('folderAlbumCover', () {
+    late Directory tempDir;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('folder_cover_test');
+    });
+
+    tearDown(() async {
+      if (tempDir.existsSync()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    RemoteLibraryService serviceWith(MockClient client) =>
+        RemoteLibraryService(
+          servers,
+          writer,
+          library,
+          clientFactory: (baseUrl, username, password) => SubsonicClient(
+            baseUrl: baseUrl,
+            username: username,
+            password: password,
+            client: client,
+          ),
+        );
+
+    http.Response albumListResponse(List<Map<String, String>> albums) =>
+        http.Response(
+          jsonEncode({
+            'subsonic-response': {
+              'status': 'ok',
+              'albumList2': {
+                'album': albums,
+              },
+            },
+          }),
+          200,
+        );
+
+    test('resolves the folder-based album by name and caches its cover',
+        () async {
+      var coverRequests = 0;
+      final jpeg = <int>[0xFF, 0xD8, ...List<int>.filled(300, 0)];
+      final svc = serviceWith(
+        MockClient((req) async {
+          if (req.url.path == '/rest/getAlbumList2') {
+            return albumListResponse([
+              {'id': 'al-1', 'name': 'RJX', 'coverArt': 'ca-1'},
+              {'id': 'al-2', 'name': 'Other', 'coverArt': 'ca-2'},
+            ]);
+          }
+          if (req.url.path == '/rest/getCoverArt') {
+            coverRequests++;
+            return http.Response.bytes(jpeg, 200);
+          }
+          return http.Response('nope', 404);
+        }),
+      );
+
+      final first = await svc.folderAlbumCover(
+        server: servers.servers.first,
+        folderName: 'RJX',
+        baseDir: tempDir,
+      );
+      expect(first, isNotNull);
+      expect(File(first!).readAsBytesSync(), jpeg);
+
+      final second = await svc.folderAlbumCover(
+        server: servers.servers.first,
+        folderName: 'RJX',
+        baseDir: tempDir,
+      );
+      expect(second, first);
+      expect(coverRequests, 1,
+          reason: 'second call must be served from the disk cache');
+    });
+
+    test('returns null when no album matches the folder name', () async {
+      var coverRequests = 0;
+      final svc = serviceWith(
+        MockClient((req) async {
+          if (req.url.path == '/rest/getAlbumList2') {
+            return albumListResponse([
+              {'id': 'al-9', 'name': 'Unrelated', 'coverArt': 'ca-9'},
+            ]);
+          }
+          if (req.url.path == '/rest/getCoverArt') {
+            coverRequests++;
+            return http.Response.bytes(<int>[1], 200);
+          }
+          return http.Response('nope', 404);
+        }),
+      );
+
+      final result = await svc.folderAlbumCover(
+        server: servers.servers.first,
+        folderName: 'RJX',
+        baseDir: tempDir,
+      );
+      expect(result, isNull);
+      expect(coverRequests, 0);
       expect(tempDir.listSync(), isEmpty);
     });
   });
@@ -562,7 +833,8 @@ void main() {
                 'path': 'RJ00000001/sub/b.mp3',
                 'title': 'B',
                 'artist': '[Unknown Artist]',
-                'album': '[Unknown Album]',
+                'album': 'RJ00000001',
+                'albumId': 'al-1',
                 'suffix': 'mp3',
                 'duration': 20,
                 'size': 2,
@@ -591,12 +863,47 @@ void main() {
       expect(folders[0].name, 'RJ00000001');
       expect(folders[0].songCount, 2);
       expect(folders[0].coverSongId, 's2');
+      expect(folders[0].coverAlbumId, 'al-1');
       expect(folders[1].name, 'RJ00000002');
       expect(folders[1].songCount, 1);
+      expect(folders[1].coverSongId, isNull);
+      expect(folders[1].coverAlbumId, isNull);
 
       final cached = await svc.indexFolders(serverId);
       expect(cached.map((f) => f.name), ['RJ00000001', 'RJ00000002']);
       expect(sweeps, 1);
+    });
+
+    test('placeholder albums never become the folder cover donor',
+        () async {
+      final svc = navServiceWith(
+        MockClient((request) async {
+          if (request.method == 'POST') {
+            return http.Response(jsonEncode({'token': 'jwt'}), 200);
+          }
+          return http.Response(
+            jsonEncode([
+              {
+                'id': 'u1',
+                'path': 'RJ00000010/a.flac',
+                'title': 'A',
+                'album': '[Unknown Album]',
+                'albumId': 'al-unknown',
+                'suffix': 'flac',
+                'duration': 10,
+                'size': 1,
+                'hasCoverArt': false,
+              },
+            ]),
+            200,
+            headers: {'x-total-count': '1'},
+          );
+        }),
+      );
+
+      final folders = await svc.indexFolders(serverId);
+      expect(folders.single.coverAlbumId, isNull,
+          reason: 'the shared placeholder album must not leak into tiles');
     });
 
     test('folderSongs flattens sub-directories in path order', () async {

@@ -15,6 +15,7 @@ import 'package:whisplayer/domain/entities/remote_server.dart';
 import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/domain/repositories/remote_server_repository.dart';
 import 'package:whisplayer/domain/repositories/settings_repository.dart';
+import 'package:whisplayer/features/library/domain/browse_prefs.dart';
 import 'package:whisplayer/features/library/presentation/remote_albums_page.dart';
 import 'package:whisplayer/features/library/presentation/remote_folder_page.dart';
 import 'package:whisplayer/l10n/app_localizations.dart';
@@ -59,6 +60,14 @@ class _FakeRemoteService implements RemoteLibraryService {
     int serverId, {
     int size = 100,
     int offset = 0,
+  }) async =>
+      albums;
+
+  @override
+  Future<List<SubsonicAlbum>> fetchAllAlbums(
+    int serverId, {
+    int pageSize = 500,
+    int maxOffset = 10000,
   }) async =>
       albums;
 
@@ -157,6 +166,24 @@ class _FakeRemoteService implements RemoteLibraryService {
     int size = 300,
   }) async =>
       null;
+
+  @override
+  Future<String?> albumCover({
+    required RemoteServer server,
+    required String albumId,
+    int size = 300,
+    Directory? baseDir,
+  }) async =>
+      null;
+
+  @override
+  Future<String?> folderAlbumCover({
+    required RemoteServer server,
+    required String folderName,
+    int size = 300,
+    Directory? baseDir,
+  }) async =>
+      null;
 }
 
 class _FakeServerRepo implements RemoteServerRepository {
@@ -208,6 +235,14 @@ class _FakeSettingsRepo implements SettingsRepository {
 
   @override
   Future<Map<String, String>> getAll() async => Map.of(values);
+
+  @override
+  Future<BrowsePrefs> getBrowsePrefs() async => BrowsePrefs.fromMap(values);
+
+  @override
+  Future<void> setBrowsePrefs(BrowsePrefs prefs) async {
+    values.addAll(prefs.toMap());
+  }
 }
 
 const _srv5 = RemoteServer(

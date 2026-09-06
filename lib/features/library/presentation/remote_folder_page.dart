@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +9,7 @@ import 'package:whisplayer/data/navidrome/navidrome_models.dart';
 import 'package:whisplayer/data/remote/remote_library_service.dart';
 import 'package:whisplayer/domain/entities/remote_server.dart';
 import 'package:whisplayer/domain/entities/song.dart';
+import 'package:whisplayer/features/library/presentation/remote_cover.dart';
 import 'package:whisplayer/features/library/presentation/stats_page.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
 import 'package:whisplayer/l10n/app_localizations.dart';
@@ -140,13 +140,31 @@ class _RemoteFolderPageState extends ConsumerState<RemoteFolderPage> {
       }
     }
     // One cover for the whole work — usually already on disk from the
-    // browse list, in which case this is a pure cache hit.
-    final artworkPath = donorId == null
+    // browse list, in which case this is a pure cache hit. Falls back to
+    // the album cover when no song carries embedded art.
+    final albumId = _firstAlbumId(remotes);
+    String? artworkPath;
+    if (donorId != null) {
+      artworkPath = await service.folderCover(
+        server: widget.server,
+        songId: donorId,
+      );
+    }
+    // A donor that fails to download (e.g. id without the Subsonic prefix)
+    // must still fall back to the album cover instead of leaving the song
+    // without artwork.
+    artworkPath ??= albumId == null
         ? null
-        : await service.folderCover(
+        : await service.albumCover(
             server: widget.server,
-            songId: donorId,
+            albumId: albumId,
           );
+    // Untagged works: the shared placeholder album is skipped, so fall
+    // back to the folder-based album's cover (folder.jpg) by name.
+    artworkPath ??= await service.folderAlbumCover(
+      server: widget.server,
+      folderName: widget.folderName,
+    );
     final localSongs = <Song>[];
     for (final remote in remotes) {
       final song = await service.syncSingleSong(
@@ -226,6 +244,22 @@ class _RemoteFolderPageState extends ConsumerState<RemoteFolderPage> {
     return null;
   }
 
+  String? _firstAlbumId(List<NavidromeSong> all) {
+    for (final song in all) {
+      final album = song.album;
+      final id = song.albumId;
+      // Skip the shared placeholder album of untagged files: its cover
+      // would be stamped on every folder and every synced song.
+      final meaningful = album != null &&
+          album.isNotEmpty &&
+          !(album.startsWith('[') && album.endsWith(']'));
+      if (meaningful && id != null && id.isNotEmpty) {
+        return id;
+      }
+    }
+    return null;
+  }
+
   /// Plays the current level only (sub-directories excluded), per product
   /// decision. Syncing is a local DB upsert per file — no audio download.
   Future<void> _playAll(List<NavidromeSong> files) async {
@@ -290,16 +324,16 @@ class _RemoteFolderPageState extends ConsumerState<RemoteFolderPage> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: SizedBox(
-                        width: 132,
-                        height: 132,
-                        child: _FolderArtwork(
-                          server: widget.server,
-                          donorId: _coverDonorId(all),
-                        ),
-                      ),
+                    RemoteCover(
+                      server: widget.server,
+                      songId: _coverDonorId(all),
+                      coverAlbumId: _firstAlbumId(all),
+                      folderName: widget.folderName,
+                      size: 132,
+                      radius: 16,
+                      cacheWidth: 264,
+                      fallbackIcon: Icons.folder_outlined,
+                      fallbackIconSize: 48,
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -376,9 +410,14 @@ class _RemoteFolderPageState extends ConsumerState<RemoteFolderPage> {
                         levels.files[index - levels.dirs.length];
                     return ListTile(
                       leading: file.hasCoverArt
-                          ? _SongThumb(
+                          ? RemoteCover(
                               server: widget.server,
                               songId: file.id,
+                              size: 48,
+                              radius: 10,
+                              cacheWidth: 96,
+                              fallbackIcon: Icons.music_note_outlined,
+                              fallbackIconSize: 22,
                             )
                           : const Icon(Icons.music_note_outlined),
                       title: Text(
@@ -413,93 +452,6 @@ class _RemoteFolderPageState extends ConsumerState<RemoteFolderPage> {
 /// Small artwork for an audio row: only requested when Navidrome
 /// reports the file has cover art; goes through the global gate and
 /// shares the on-disk cache with every other cover consumer.
-class _SongThumb extends ConsumerWidget {
-  const _SongThumb({required this.server, required this.songId});
-
-  final RemoteServer server;
-  final String songId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    Widget fallback() => Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: scheme.secondaryContainer,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            Icons.music_note_outlined,
-            size: 22,
-            color: scheme.onSecondaryContainer,
-          ),
-        );
-    final future = ref
-        .read(remoteLibraryServiceProvider)
-        .folderCover(server: server, songId: songId, size: 96);
-    return FutureBuilder<String?>(
-      future: future,
-      builder: (context, snapshot) {
-        final path = snapshot.data;
-        if (path == null || !File(path).existsSync()) {
-          return fallback();
-        }
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Image.file(
-            File(path),
-            width: 48,
-            height: 48,
-            fit: BoxFit.cover,
-            cacheWidth: 96,
-            errorBuilder: (_, __, ___) => fallback(),
-          ),
-        );
-      },
-    );
-  }
-}
 
 /// Big cover for the overview header; shares the folder cover cache so a
 /// tile already seen in the browse list renders with zero network traffic.
-class _FolderArtwork extends ConsumerWidget {
-  const _FolderArtwork({required this.server, required this.donorId});
-
-  final RemoteServer server;
-  final String? donorId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    Widget fallback() => ColoredBox(
-          color: scheme.secondaryContainer,
-          child: Icon(
-            Icons.folder_outlined,
-            size: 48,
-            color: scheme.onSecondaryContainer,
-          ),
-        );
-    if (donorId == null) {
-      return fallback();
-    }
-    final future = ref
-        .read(remoteLibraryServiceProvider)
-        .folderCover(server: server, songId: donorId!, size: 200);
-    return FutureBuilder<String?>(
-      future: future,
-      builder: (context, snapshot) {
-        final path = snapshot.data;
-        if (path == null || !File(path).existsSync()) {
-          return fallback();
-        }
-        return Image.file(
-          File(path),
-          fit: BoxFit.cover,
-          cacheWidth: 264,
-          errorBuilder: (_, __, ___) => fallback(),
-        );
-      },
-    );
-  }
-}

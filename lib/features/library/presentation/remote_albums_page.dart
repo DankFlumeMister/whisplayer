@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,29 +8,10 @@ import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/data/remote/remote_library_service.dart';
 import 'package:whisplayer/data/subsonic/subsonic_models.dart';
 import 'package:whisplayer/domain/entities/remote_server.dart';
+import 'package:whisplayer/features/library/domain/browse_prefs.dart';
+import 'package:whisplayer/features/library/presentation/remote_cover.dart';
 import 'package:whisplayer/features/player/application/player_controller.dart';
 import 'package:whisplayer/l10n/app_localizations.dart';
-
-const String _keyActiveServer = 'remote.active_server_id';
-const String _keyBrowseMode = 'cloud.browse_mode';
-const String _keyAlbumSort = 'cloud.album_sort';
-const String _keyAlbumDesc = 'cloud.album_desc';
-const String _keyAlbumsView = 'cloud.albums_view';
-const String _keyFolderSort = 'cloud.folder_sort';
-const String _keyFolderDesc = 'cloud.folder_desc';
-const String _keyFoldersView = 'cloud.folders_view';
-
-/// One page of getAlbumList2 is the protocol maximum; a full sweep needs at
-/// most a couple of round trips for realistic libraries.
-const int _albumPageSize = 500;
-
-enum _CloudMode { albums, folders }
-
-enum _AlbumSort { name, artist, recent, songs }
-
-enum _FolderSort { name, songs }
-
-enum _CloudView { list, grid }
 
 class RemoteAlbumsPage extends ConsumerStatefulWidget {
   const RemoteAlbumsPage({super.key});
@@ -46,15 +26,7 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
   List<SubsonicAlbum>? _albums;
   List<RemoteFolderSummary>? _folders;
 
-  _CloudMode _mode = _CloudMode.albums;
-
-  _AlbumSort _albumSort = _AlbumSort.name;
-  bool _albumDesc = false;
-  _CloudView _albumsView = _CloudView.grid;
-
-  _FolderSort _folderSort = _FolderSort.name;
-  bool _folderDesc = false;
-  _CloudView _foldersView = _CloudView.list;
+  BrowsePrefs _prefs = BrowsePrefs.defaults;
 
   bool _loading = false;
   bool _opening = false;
@@ -75,52 +47,18 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
   Future<void> _restorePrefs() async {
     final repo = ref.read(settingsRepositoryProvider);
     try {
-      final mode = await repo.getString(_keyBrowseMode);
-      if (mode == 'folders') {
-        _mode = _CloudMode.folders;
-      }
-      final albumSort = await repo.getString(_keyAlbumSort);
-      _albumSort = _parseAlbumSort(albumSort);
-      _albumDesc = await repo.getString(_keyAlbumDesc) == 'true';
-      final albumsView = await repo.getString(_keyAlbumsView);
-      if (albumsView == 'list') {
-        _albumsView = _CloudView.list;
-      }
-      final folderSort = await repo.getString(_keyFolderSort);
-      _folderSort = _parseFolderSort(folderSort);
-      _folderDesc = await repo.getString(_keyFolderDesc) == 'true';
-      final foldersView = await repo.getString(_keyFoldersView);
-      if (foldersView == 'grid') {
-        _foldersView = _CloudView.grid;
-      }
+      final prefs = await repo.getBrowsePrefs();
       if (mounted) {
-        setState(() {});
+        setState(() => _prefs = prefs);
       }
     } on Exception {
       // Settings storage unavailable (tests / first run) — keep defaults.
     }
   }
 
-  _AlbumSort _parseAlbumSort(String? raw) {
-    switch (raw) {
-      case 'artist':
-        return _AlbumSort.artist;
-      case 'recent':
-        return _AlbumSort.recent;
-      case 'songs':
-        return _AlbumSort.songs;
-      default:
-        return _AlbumSort.name;
-    }
-  }
-
-  _FolderSort _parseFolderSort(String? raw) {
-    return raw == 'songs' ? _FolderSort.songs : _FolderSort.name;
-  }
-
-  void _persist(String key, String value) {
+  void _persistPrefs() {
     unawaited(
-      ref.read(settingsRepositoryProvider).setString(key, value),
+      ref.read(settingsRepositoryProvider).setBrowsePrefs(_prefs),
     );
   }
 
@@ -144,20 +82,14 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
         });
         return;
       }
-      final savedId = int.tryParse(
-            await ref.read(settingsRepositoryProvider).getString(
-                  _keyActiveServer,
-                ) ??
-                '',
-          ) ??
-          -1;
+      final savedId = _prefs.activeServerId;
       var server = servers.first;
       for (final candidate in servers) {
         if (candidate.id == savedId) {
           server = candidate;
         }
       }
-      if (_mode == _CloudMode.albums) {
+      if (_prefs.mode == CloudMode.albums) {
         final albums = await _fetchAllAlbums(server.id, refresh: refresh);
         if (!mounted) {
           return;
@@ -203,29 +135,19 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
         return cached;
       }
     }
-    final all = <SubsonicAlbum>[];
-    var offset = 0;
-    while (true) {
-      final page = await ref
-          .read(remoteLibraryServiceProvider)
-          .fetchAlbums(serverId, size: _albumPageSize, offset: offset);
-      all.addAll(page);
-      if (page.length < _albumPageSize || offset > 10000) {
-        break;
-      }
-      offset += page.length;
-    }
-    return all;
+    return ref
+        .read(remoteLibraryServiceProvider)
+        .fetchAllAlbums(serverId);
   }
 
-  void _switchMode(_CloudMode mode) {
-    if (mode == _mode) {
+  void _switchMode(CloudMode mode) {
+    if (mode == _prefs.mode) {
       return;
     }
-    setState(() => _mode = mode);
-    _persist(_keyBrowseMode, mode == _CloudMode.folders ? 'folders' : 'albums');
+    setState(() => _prefs = _prefs.copyWith(mode: mode));
+    _persistPrefs();
     final hasData =
-        mode == _CloudMode.folders ? _folders != null : _albums != null;
+        mode == CloudMode.folders ? _folders != null : _albums != null;
     if (!hasData) {
       unawaited(_load());
     }
@@ -239,21 +161,21 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
     // shows newest first, everything else ascending. The descending switch
     // simply reverses whatever is on screen.
     int fieldCompare(SubsonicAlbum a, SubsonicAlbum b) {
-      switch (_albumSort) {
-        case _AlbumSort.artist:
+      switch (_prefs.albumSort) {
+        case AlbumSort.artist:
           return (a.artist ?? '')
               .toLowerCase()
               .compareTo((b.artist ?? '').toLowerCase());
-        case _AlbumSort.recent:
+        case AlbumSort.recent:
           return b.created.compareTo(a.created);
-        case _AlbumSort.songs:
+        case AlbumSort.songs:
           return a.songCount.compareTo(b.songCount);
-        case _AlbumSort.name:
+        case AlbumSort.name:
           return a.name.toLowerCase().compareTo(b.name.toLowerCase());
       }
     }
 
-    final direction = _albumDesc ? -1 : 1;
+    final direction = _prefs.albumDesc ? -1 : 1;
     int signed(SubsonicAlbum a, SubsonicAlbum b) =>
         direction * fieldCompare(a, b);
     sorted.sort(signed);
@@ -267,10 +189,10 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
     List<RemoteFolderSummary> folders,
   ) {
     int comparator(RemoteFolderSummary a, RemoteFolderSummary b) =>
-        _folderSort == _FolderSort.songs
+        _prefs.folderSort == FolderSort.songs
             ? a.songCount.compareTo(b.songCount)
             : a.name.compareTo(b.name);
-    final direction = _folderDesc ? -1 : 1;
+    final direction = _prefs.folderDesc ? -1 : 1;
     int signed(RemoteFolderSummary a, RemoteFolderSummary b) =>
         direction * comparator(a, b);
     final sorted = [...folders]..sort(signed);
@@ -279,17 +201,17 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
 
   void _showSortSheet() {
     final l10n = AppLocalizations.of(context);
-    final isAlbums = _mode == _CloudMode.albums;
+    final isAlbums = _prefs.mode == CloudMode.albums;
     final entries = <Object, String>{
-      if (isAlbums) ...<_AlbumSort, String>{
-        _AlbumSort.name: l10n.sortTitle,
-        _AlbumSort.artist: l10n.sortArtist,
-        _AlbumSort.recent: l10n.sortAddedAt,
-        _AlbumSort.songs: l10n.sortSongsCount,
+      if (isAlbums) ...<AlbumSort, String>{
+        AlbumSort.name: l10n.sortTitle,
+        AlbumSort.artist: l10n.sortArtist,
+        AlbumSort.recent: l10n.sortAddedAt,
+        AlbumSort.songs: l10n.sortSongsCount,
       },
-      if (!isAlbums) ...<_FolderSort, String>{
-        _FolderSort.name: l10n.sortTitle,
-        _FolderSort.songs: l10n.sortSongsCount,
+      if (!isAlbums) ...<FolderSort, String>{
+        FolderSort.name: l10n.sortTitle,
+        FolderSort.songs: l10n.sortSongsCount,
       },
     };
     showModalBottomSheet<void>(
@@ -305,42 +227,37 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
                   title: Text(entry.value),
                   trailing: _sortSelectionMarker(entry.key),
                   onTap: () {
+                    Navigator.pop(sheetContext);
                     setState(() {
-                      if (entry.key is _AlbumSort) {
-                        _albumSort = entry.key as _AlbumSort;
-                        // Every field starts in its natural order.
-                        _albumDesc = false;
+                      if (entry.key is AlbumSort) {
+                        _prefs = _prefs.copyWith(
+                          albumSort: entry.key as AlbumSort,
+                          // Every field starts in its natural order.
+                          albumDesc: false,
+                        );
                       } else {
-                        _folderSort = entry.key as _FolderSort;
-                        _folderDesc = false;
+                        _prefs = _prefs.copyWith(
+                          folderSort: entry.key as FolderSort,
+                          folderDesc: false,
+                        );
                       }
                     });
-                    Navigator.pop(sheetContext);
-                    _persistCurrentSort(entry.key);
-                    _persist(
-                      entry.key is _AlbumSort
-                          ? _keyAlbumDesc
-                          : _keyFolderDesc,
-                      'false',
-                    );
+                    _persistPrefs();
                   },
                 ),
               SwitchListTile(
                 title: Text(l10n.sortDescending),
-                value: isAlbums ? _albumDesc : _folderDesc,
+                value: isAlbums ? _prefs.albumDesc : _prefs.folderDesc,
                 onChanged: (v) {
+                  Navigator.pop(sheetContext);
                   setState(() {
                     if (isAlbums) {
-                      _albumDesc = v;
+                      _prefs = _prefs.copyWith(albumDesc: v);
                     } else {
-                      _folderDesc = v;
+                      _prefs = _prefs.copyWith(folderDesc: v);
                     }
                   });
-                  Navigator.pop(sheetContext);
-                  _persist(
-                    isAlbums ? _keyAlbumDesc : _keyFolderDesc,
-                    '$v',
-                  );
+                  _persistPrefs();
                 },
               ),
             ],
@@ -351,39 +268,36 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
   }
 
   Widget? _sortSelectionMarker(Object key) {
-    final selected = key is _AlbumSort ? key == _albumSort : key == _folderSort;
+    final selected =
+        key is AlbumSort ? key == _prefs.albumSort : key == _prefs.folderSort;
     return selected ? const Icon(Icons.check) : null;
-  }
-
-  void _persistCurrentSort(Object key) {
-    if (key is _AlbumSort) {
-      _persist(_keyAlbumSort, key.name);
-    } else if (key is _FolderSort) {
-      _persist(_keyFolderSort, key.name);
-    }
   }
 
   void _toggleView() {
     setState(() {
-      if (_mode == _CloudMode.albums) {
-        _albumsView =
-            _albumsView == _CloudView.grid ? _CloudView.list : _CloudView.grid;
-        _persist(_keyAlbumsView, _albumsView.name);
+      if (_prefs.mode == CloudMode.albums) {
+        _prefs = _prefs.copyWith(
+          albumsView: _prefs.albumsView == CloudView.grid
+              ? CloudView.list
+              : CloudView.grid,
+        );
       } else {
-        _foldersView =
-            _foldersView == _CloudView.grid ? _CloudView.list : _CloudView.grid;
-        _persist(_keyFoldersView, _foldersView.name);
+        _prefs = _prefs.copyWith(
+          foldersView: _prefs.foldersView == CloudView.grid
+              ? CloudView.list
+              : CloudView.grid,
+        );
       }
     });
+    _persistPrefs();
   }
 
   Future<void> _switchServer(RemoteServer server) async {
     if (server.id == _server?.id) {
       return;
     }
-    await ref
-        .read(settingsRepositoryProvider)
-        .setString(_keyActiveServer, '${server.id}');
+    setState(() => _prefs = _prefs.copyWith(activeServerId: server.id));
+    await ref.read(settingsRepositoryProvider).setBrowsePrefs(_prefs);
     _albums = null;
     _folders = null;
     await _load(refresh: true);
@@ -572,7 +486,7 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
       appBar: AppBar(
         title: _buildTitle(l10n),
         actions: [
-          if (_mode == _CloudMode.albums)
+          if (_prefs.mode == CloudMode.albums)
             SearchAnchor(
               builder: (context, controller) => IconButton(
                 tooltip: l10n.tooltipSearch,
@@ -631,13 +545,13 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
                 ),
               ],
               selected: {
-                if (_mode == _CloudMode.albums) 'albums' else 'folders',
+                if (_prefs.mode == CloudMode.albums) 'albums' else 'folders',
               },
               showSelectedIcon: false,
               onSelectionChanged: (selection) =>
                   _switchMode(selection.first == 'folders'
-                      ? _CloudMode.folders
-                      : _CloudMode.albums),
+                      ? CloudMode.folders
+                      : CloudMode.albums),
             ),
           ),
           Expanded(child: _buildBody(theme)),
@@ -647,10 +561,11 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
   }
 
   Widget _viewToggleIcon() {
-    final current =
-        _mode == _CloudMode.albums ? _albumsView : _foldersView;
+    final current = _prefs.mode == CloudMode.albums
+        ? _prefs.albumsView
+        : _prefs.foldersView;
     return Icon(
-      current == _CloudView.grid
+      current == CloudView.grid
           ? Icons.view_list_rounded
           : Icons.grid_view_rounded,
     );
@@ -709,7 +624,7 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_mode == _CloudMode.albums) {
+    if (_prefs.mode == CloudMode.albums) {
       return _buildAlbumsBody(theme, l10n);
     }
     return _buildFoldersBody(theme, l10n);
@@ -720,14 +635,18 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
     if (albums.isEmpty) {
       return Center(child: Text(l10n.serverNoAlbums));
     }
-    if (_albumsView == _CloudView.list) {
+    if (_prefs.albumsView == CloudView.list) {
       return ListView.builder(
         padding: const EdgeInsets.only(bottom: 140),
         itemCount: albums.length,
         itemBuilder: (context, index) {
           final album = albums[index];
           return ListTile(
-            leading: _CoverThumb(server: _server, coverArtId: album.coverArt),
+            leading: RemoteCover(
+              server: _server,
+              coverArtId: album.coverArt,
+              fallbackIconSize: 48,
+            ),
             title: Text(album.name),
             subtitle: Text(album.artist ?? ''),
             trailing: Text('${album.songCount}'),
@@ -757,7 +676,11 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    _CoverThumb(server: _server, coverArtId: album.coverArt),
+                    RemoteCover(
+                      server: _server,
+                      coverArtId: album.coverArt,
+                      fallbackIconSize: 48,
+                    ),
                     if (_opening && _openingAlbumId == album.id)
                       const Center(child: CircularProgressIndicator()),
                   ],
@@ -790,14 +713,23 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
     if (folders.isEmpty) {
       return Center(child: Text(l10n.cloudFoldersEmpty));
     }
-    if (_foldersView == _CloudView.list) {
+    if (_prefs.foldersView == CloudView.list) {
       return ListView.builder(
         padding: const EdgeInsets.fromLTRB(0, 8, 0, 140),
         itemCount: folders.length,
         itemBuilder: (context, index) {
           final folder = folders[index];
           return ListTile(
-            leading: _FolderThumb(server: _server, summary: folder, size: 48),
+            leading: RemoteCover(
+              server: _server,
+              songId: folder.coverSongId,
+              coverAlbumId: folder.coverAlbumId,
+              folderName: folder.name,
+              size: 48,
+              radius: 10,
+              fallbackIcon: Icons.folder_outlined,
+              fallbackIconSize: 24,
+            ),
             title: Text(folder.name),
             subtitle: Text(l10n.countSongs(folder.songCount)),
             trailing: const Icon(Icons.chevron_right),
@@ -824,10 +756,21 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: _FolderThumb(
-                  server: _server,
-                  summary: folder,
-                  size: null,
+                // Keep the cover square: with a loose cross-axis constraint
+                // the fallback Container would otherwise stretch to the
+                // full cell height and render as a tall rectangle.
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: RemoteCover(
+                      server: _server,
+                      songId: folder.coverSongId,
+                      coverAlbumId: folder.coverAlbumId,
+                      folderName: folder.name,
+                      fallbackIcon: Icons.folder_outlined,
+                      fallbackIconSize: 44,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 6),
@@ -865,127 +808,7 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
   }
 }
 
-class _CoverThumb extends ConsumerWidget {
-  const _CoverThumb({required this.server, required this.coverArtId});
 
-  final RemoteServer? server;
-  final String? coverArtId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    Widget fallback() => Container(
-          decoration: BoxDecoration(
-            color: scheme.secondaryContainer,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            Icons.album_outlined,
-            size: 48,
-            color: scheme.onSecondaryContainer,
-          ),
-        );
-    if (server == null || coverArtId == null || coverArtId!.isEmpty) {
-      return fallback();
-    }
-    final future = ref
-        .read(remoteLibraryServiceProvider)
-        .cacheCover(server: server!, coverArtId: coverArtId!, size: 200);
-    return FutureBuilder<String?>(
-      future: future,
-      builder: (context, snapshot) {
-        final path = snapshot.data;
-        if (path == null || !File(path).existsSync()) {
-          return fallback();
-        }
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.file(
-            File(path),
-            fit: BoxFit.cover,
-            cacheWidth: 200,
-            errorBuilder: (_, __, ___) => fallback(),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _FolderThumb extends ConsumerWidget {
-  const _FolderThumb({
-    required this.server,
-    required this.summary,
-    required this.size,
-  });
-
-  final RemoteServer? server;
-  final RemoteFolderSummary summary;
-
-  /// Fixed square edge for list rows; `null` expands to fill grid cells.
-  final double? size;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    Widget fallback() {
-      final icon = Icon(
-        Icons.folder_outlined,
-        size: size == null ? 44 : 24,
-        color: scheme.onSecondaryContainer,
-      );
-      if (size == null) {
-        return Container(
-          decoration: BoxDecoration(
-            color: scheme.secondaryContainer,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          alignment: Alignment.center,
-          child: icon,
-        );
-      }
-      return Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: scheme.secondaryContainer,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: icon,
-      );
-    }
-
-    final donor = summary.coverSongId;
-    if (server == null || donor == null) {
-      return fallback();
-    }
-    final future = ref
-        .read(remoteLibraryServiceProvider)
-        .folderCover(server: server!, songId: donor, size: 200);
-    return FutureBuilder<String?>(
-      future: future,
-      builder: (context, snapshot) {
-        final path = snapshot.data;
-        if (path == null || !File(path).existsSync()) {
-          return fallback();
-        }
-        final image = ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.file(
-            File(path),
-            fit: BoxFit.cover,
-            cacheWidth: 200,
-            errorBuilder: (_, __, ___) => fallback(),
-          ),
-        );
-        if (size == null) {
-          return SizedBox.expand(child: image);
-        }
-        return SizedBox(width: size, height: size, child: image);
-      },
-    );
-  }
-}
 
 class _Hint extends StatelessWidget {
   const _Hint({required this.text});
