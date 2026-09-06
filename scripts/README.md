@@ -1,4 +1,14 @@
-# Navidrome Tray
+# Navidrome helper scripts
+
+> **Canonical sources:** these two scripts now live in their own repositories.
+> The copies here are kept for convenience alongside the app; for the latest
+> version, bug reports and release downloads use:
+> - [github.com/DankFlumeMister/navidrome-tray](https://github.com/DankFlumeMister/navidrome-tray)
+> - [github.com/DankFlumeMister/navidrome-vtt-support](https://github.com/DankFlumeMister/navidrome-vtt-support)
+
+---
+
+## Navidrome Tray
 
 An optional helper script that runs a [Navidrome](https://www.navidrome.org)
 server as a background child process and shows a system-tray icon, so the

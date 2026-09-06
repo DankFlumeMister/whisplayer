@@ -44,6 +44,17 @@
 
 [Releases](../../releases) ページから最新 APK をダウンロードしてください。
 
+### 🧩 オプションツール
+
+セルフホスト Navidrome サーバー向けの補助ツールです（Python スクリプト。アプリとは独立してバージョン管理されるため、APK と同時に更新する必要はありません）：
+
+| ツール | 用途 | ダウンロード |
+| --- | --- | --- |
+| [navidrome-tray](https://github.com/DankFlumeMister/navidrome-tray) | Navidrome をシステムトレイに格納し、コンソール画面を表示しない | [ZIP](https://github.com/DankFlumeMister/navidrome-tray/archive/refs/heads/main.zip) |
+| [navidrome-vtt-support](https://github.com/DankFlumeMister/navidrome-vtt-support) | `.vtt` 字幕を `.lrc` に一括変換し、Navidrome で同期歌詞を配信できるようにする | [ZIP](https://github.com/DankFlumeMister/navidrome-vtt-support/archive/refs/heads/main.zip) |
+
+いずれも Python 3 が必要です（トレイツールは追加で `pip install pystray pillow`）。使い方は各リポジトリの README を参照してください。
+
 ## 🔨 ソースからビルド
 
 ```bash
@@ -56,7 +67,7 @@ flutter build apk --release
 
 要件：
 
-- Flutter **3.27+**（開発環境は master ブランチ `3.48.0-0.2.pre`、`Color.withValues` などの新 API を使用）
+- Flutter **3.27+**（開発環境は master ブランチ `3.48.0-0.3.pre`、`Color.withValues` などの新 API を使用）
 - Android SDK（プロジェクトは compileSdk 37）
 
 中国本土のネットワークではミラー設定を推奨：

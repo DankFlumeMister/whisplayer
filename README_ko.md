@@ -44,6 +44,17 @@
 
 [Releases](../../releases) 페이지에서 최신 APK를 다운로드하세요.
 
+### 🧩 선택 도구
+
+셀프 호스팅 Navidrome 서버용 보조 도구입니다(Python 스크립트. 앱과 별개로 버전 관리되므로 APK와 함께 업데이트할 필요가 없습니다):
+
+| 도구 | 용도 | 다운로드 |
+| --- | --- | --- |
+| [navidrome-tray](https://github.com/DankFlumeMister/navidrome-tray) | Navidrome을 시스템 트레이에 넣어 콘솔 창 없이 실행 | [ZIP](https://github.com/DankFlumeMister/navidrome-tray/archive/refs/heads/main.zip) |
+| [navidrome-vtt-support](https://github.com/DankFlumeMister/navidrome-vtt-support) | `.vtt` 자막을 `.lrc`로 일괄 변환해 Navidrome이 동기화 가사를 제공하도록 함 | [ZIP](https://github.com/DankFlumeMister/navidrome-vtt-support/archive/refs/heads/main.zip) |
+
+둘 다 Python 3이 필요하며(트레이 도구는 추가로 `pip install pystray pillow`), 사용법은 각 저장소의 README를 참고하세요.
+
 ## 🔨 소스에서 빌드
 
 ```bash
@@ -56,7 +67,7 @@ flutter build apk --release
 
 요구 사항:
 
-- Flutter **3.27+** (개발 환경은 master 브랜치 `3.48.0-0.2.pre`, `Color.withValues` 등 신규 API 사용)
+- Flutter **3.27+** (개발 환경은 master 브랜치 `3.48.0-0.3.pre`, `Color.withValues` 등 신규 API 사용)
 - Android SDK (프로젝트 compileSdk 37)
 
 중국 대륙 네트워크에서는 미러 설정을 권장합니다:

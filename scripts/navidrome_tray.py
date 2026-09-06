@@ -85,6 +85,8 @@ def main() -> int:
         help="base URL of the web UI",
     )
     args = parser.parse_args()
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     already_up = server_is_up(args.url)
     proc: subprocess.Popen | None = None

@@ -44,6 +44,17 @@
 
 前往 [Releases](../../releases) 頁面下載最新 APK。
 
+### 🧩 可選工具
+
+為自建 Navidrome 伺服器準備的配套小工具（Python 腳本，與 App 版本獨立迭代，無須跟著 APK 一起更新）：
+
+| 工具 | 用途 | 下載 |
+| --- | --- | --- |
+| [navidrome-tray](https://github.com/DankFlumeMister/navidrome-tray) | 將 Navidrome 收進系統匣，不再彈出主控台視窗 | [ZIP](https://github.com/DankFlumeMister/navidrome-tray/archive/refs/heads/main.zip) |
+| [navidrome-vtt-support](https://github.com/DankFlumeMister/navidrome-vtt-support) | 批次將 `.vtt` 字幕轉成 `.lrc`，讓 Navidrome 提供同步歌詞 | [ZIP](https://github.com/DankFlumeMister/navidrome-vtt-support/archive/refs/heads/main.zip) |
+
+兩者皆需 Python 3 環境（托盤工具額外需要 `pip install pystray pillow`），詳細用法見各自儲存庫的 README。
+
 ## 🔨 從原始碼建置
 
 ```bash
@@ -56,7 +67,7 @@ flutter build apk --release
 
 環境需求：
 
-- Flutter **3.27+**（開發環境為 master 分支 `3.48.0-0.2.pre`，使用了 `Color.withValues` 等新 API）
+- Flutter **3.27+**（開發環境為 master 分支 `3.48.0-0.3.pre`，使用了 `Color.withValues` 等新 API）
 - Android SDK（專案配置 compileSdk 37）
 
 中國大陸網路下取包建議先設定映像：

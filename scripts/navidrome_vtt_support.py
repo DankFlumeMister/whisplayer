@@ -16,7 +16,7 @@ Pure standard library; cross-platform; idempotent by default (a newer
 .vtt regenerates its .lrc, otherwise existing .lrc files are kept).
 
 Usage:
-    python navidrome_vtt_support.py --root "N:\\Music"            # convert
+    python navidrome_vtt_support.py --root "D:\\Music"            # convert
     python navidrome_vtt_support.py --root . --dry-run            # preview
     python navidrome_vtt_support.py --root . --force              # reconvert
 """

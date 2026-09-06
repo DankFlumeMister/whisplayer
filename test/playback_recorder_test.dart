@@ -98,7 +98,7 @@ void main() {
 
       await recorder.recordDeparture(queue: [_song(1)], index: 0);
       recorder.reset();
-      // A fresh listen after the rebuild must be recordable again.
+      // ignore: cascade_invocations - snapshot must be noted first.
       recorder.noteSnapshot(
         const PlaybackSnapshot(playing: true, positionMs: 45000),
       );

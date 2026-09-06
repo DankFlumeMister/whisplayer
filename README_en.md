@@ -46,6 +46,17 @@ A local & self-hosted music player.
 
 Get the latest APK from the [Releases](../../releases) page.
 
+### 🧩 Optional tools
+
+Companion helpers for self-hosted Navidrome servers (Python scripts, versioned independently of the app — no need to update them alongside the APK):
+
+| Tool | Purpose | Download |
+| --- | --- | --- |
+| [navidrome-tray](https://github.com/DankFlumeMister/navidrome-tray) | Run Navidrome from the system tray, no console window | [ZIP](https://github.com/DankFlumeMister/navidrome-tray/archive/refs/heads/main.zip) |
+| [navidrome-vtt-support](https://github.com/DankFlumeMister/navidrome-vtt-support) | Batch-convert `.vtt` subtitles to `.lrc` so Navidrome can serve synced lyrics | [ZIP](https://github.com/DankFlumeMister/navidrome-vtt-support/archive/refs/heads/main.zip) |
+
+Both need Python 3 (the tray helper additionally needs `pip install pystray pillow`). See each repository's README for usage.
+
 ## 🔨 Build from source
 
 ```bash
@@ -58,7 +69,7 @@ flutter build apk --release
 
 Requirements:
 
-- Flutter **3.27+** (dev environment uses master branch `3.48.0-0.2.pre`, uses newer APIs like `Color.withValues`)
+- Flutter **3.27+** (dev environment uses master branch `3.48.0-0.3.pre`, uses newer APIs like `Color.withValues`)
 - Android SDK (project targets compileSdk 37)
 
 If you're behind a firewall in mainland China:

@@ -47,8 +47,13 @@ app.*.map.json
 # Widget Preview related
 .widget_preview/
 
-# Internal handoff document - never publish
+# Internal handoff documents - never publish
 /PROJECT_HANDOFF.md
+/PROJECT_HANDOFF_HISTORY.md
 
 # Agent workspace (memory, session data) - never publish
 .workbuddy-ai/
+
+# Agent skills config - never publish
+/AGENTS.md
+/docs/agents/

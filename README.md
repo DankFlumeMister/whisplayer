@@ -47,6 +47,17 @@ A polished local & self-hosted music player for Android, built with Flutter.
 
 前往 [Releases](../../releases) 页面下载最新 APK。
 
+### 🧩 可选工具
+
+为自建 Navidrome 服务器准备的配套小工具（Python 脚本，与 App 版本独立迭代，无需跟着 APK 一起更新）：
+
+| 工具 | 用途 | 下载 |
+| --- | --- | --- |
+| [navidrome-tray](https://github.com/DankFlumeMister/navidrome-tray) | 把 Navidrome 收进系统托盘，不再弹控制台窗口 | [ZIP](https://github.com/DankFlumeMister/navidrome-tray/archive/refs/heads/main.zip) |
+| [navidrome-vtt-support](https://github.com/DankFlumeMister/navidrome-vtt-support) | 批量把 `.vtt` 字幕转成 `.lrc`，让 Navidrome 提供同步歌词 | [ZIP](https://github.com/DankFlumeMister/navidrome-vtt-support/archive/refs/heads/main.zip) |
+
+两者均需 Python 3 环境（托盘工具额外需要 `pip install pystray pillow`），具体用法见各自仓库的 README。
+
 ## 🔨 从源码构建
 
 ```bash
@@ -59,7 +70,7 @@ flutter build apk --release
 
 环境要求：
 
-- Flutter **3.27+**（开发环境为 master 分支 `3.48.0-0.2.pre`，使用了 `Color.withValues` 等新 API）
+- Flutter **3.27+**（开发环境为 master 分支 `3.48.0-0.3.pre`，使用了 `Color.withValues` 等新 API）
 - Android SDK（项目配置 compileSdk 37）
 
 中国大陆网络下取包建议先设置镜像：
