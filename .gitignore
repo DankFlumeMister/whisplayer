@@ -57,3 +57,7 @@ app.*.map.json
 # Agent skills config - never publish
 /AGENTS.md
 /docs/agents/
+
+# Agent design docs (domain model + ADRs) - never publish
+/CONTEXT.md
+/docs/adr/
