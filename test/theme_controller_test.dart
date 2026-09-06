@@ -6,6 +6,7 @@ import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/core/theme/app_theme.dart';
 import 'package:whisplayer/core/theme/theme_controller.dart';
 import 'package:whisplayer/domain/repositories/settings_repository.dart';
+import 'package:whisplayer/features/library/domain/browse_prefs.dart';
 
 class _InMemorySettings implements SettingsRepository {
   final Map<String, String> values = <String, String>{};
@@ -24,6 +25,13 @@ class _InMemorySettings implements SettingsRepository {
 
   @override
   Future<Map<String, String>> getAll() async => Map.of(values);
+
+  @override
+  Future<BrowsePrefs> getBrowsePrefs() async => BrowsePrefs.defaults;
+
+  @override
+  Future<void> setBrowsePrefs(BrowsePrefs prefs) async {}
+
 }
 
 ProviderContainer _container(_InMemorySettings settings) {
