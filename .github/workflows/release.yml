@@ -29,6 +29,20 @@ jobs:
           flutter-version: 3.48.0-0.3.pre
           cache: true
 
+      # 正式签名（2026-09-06）：若仓库配置了 KEYSTORE_BASE64 等 4 个 secrets 就用正式证书，
+      # 否则留空 → build.gradle.kts 回退 debug 签名（此时 APK 与本地正式签名不兼容，
+      # 用户侧会出现「无法覆盖安装」，所以发版前务必把 secrets 配好）。
+      - name: Restore release keystore (optional)
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/whisplayer-release.jks
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          keyPassword=${{ secrets.KEYSTORE_KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEYSTORE_KEY_ALIAS }}
+          storeFile=whisplayer-release.jks
+          EOF
+
       - run: flutter pub get
       - run: flutter analyze
         continue-on-error: true
