@@ -33,10 +33,18 @@ jobs:
       # 否则留空 → build.gradle.kts 回退 debug 签名（此时 APK 与本地正式签名不兼容，
       # 用户侧会出现「无法覆盖安装」，所以发版前务必把 secrets 配好）。
       - name: Restore release keystore (optional)
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/whisplayer-release.jks
-          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=whisplayer-release.jks\n' "${{ secrets.KEYSTORE_STORE_PASSWORD }}" "${{ secrets.KEYSTORE_KEY_PASSWORD }}" "${{ secrets.KEYSTORE_KEY_ALIAS }}" > android/key.properties
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 --decode > android/app/whisplayer-release.jks
+            printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=whisplayer-release.jks\n' "$STORE_PASSWORD" "$KEY_PASSWORD" "$KEY_ALIAS" > android/key.properties
+          else
+            echo "No release keystore secrets; build.gradle.kts falls back to debug signing."
+          fi
 
       - run: flutter pub get
       - run: flutter analyze
