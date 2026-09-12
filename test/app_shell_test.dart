@@ -47,7 +47,9 @@ void main() {
 
   testWidgets('app shell renders library tab by default', (tester) async {
     await pumpApp(tester);
-    expect(find.text('本地'), findsOneWidget);
+    // The tab label and the page's own AppBar title share this string, so
+    // more than one match is expected.
+    expect(find.text('本地'), findsWidgets);
     expect(find.text('云端'), findsOneWidget);
     expect(find.text('播放列表'), findsWidgets);
   });

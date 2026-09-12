@@ -8,10 +8,11 @@ import 'package:whisplayer/domain/entities/artist.dart';
 import 'package:whisplayer/domain/entities/remote_server.dart';
 import 'package:whisplayer/features/library/presentation/album_detail_page.dart';
 import 'package:whisplayer/features/library/presentation/artist_detail_page.dart';
+import 'package:whisplayer/features/library/presentation/cloud_folder_page.dart';
+import 'package:whisplayer/features/library/presentation/cloud_page.dart';
 import 'package:whisplayer/features/library/presentation/folder_detail_page.dart';
 import 'package:whisplayer/features/library/presentation/library_page.dart';
 import 'package:whisplayer/features/library/presentation/recently_played_page.dart';
-import 'package:whisplayer/features/library/presentation/remote_albums_page.dart';
 import 'package:whisplayer/features/library/presentation/remote_folder_page.dart';
 import 'package:whisplayer/features/library/presentation/songs_page.dart';
 import 'package:whisplayer/features/library/presentation/stats_page.dart';
@@ -23,6 +24,7 @@ import 'package:whisplayer/features/settings/presentation/appearance_page.dart';
 import 'package:whisplayer/features/settings/presentation/remote_servers_page.dart';
 import 'package:whisplayer/features/settings/presentation/scan_page.dart';
 import 'package:whisplayer/features/settings/presentation/settings_page.dart';
+import 'package:whisplayer/features/settings/presentation/webdav_servers_page.dart';
 import 'package:whisplayer/l10n/app_localizations.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -54,6 +56,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'remote-servers',
             builder: (_, __) => const RemoteServersPage(),
+          ),
+          GoRoute(
+            path: 'webdav-servers',
+            builder: (_, __) => const WebDavServersPage(),
           ),
         ],
       ),
@@ -108,8 +114,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/cloud',
-                builder: (_, __) => const RemoteAlbumsPage(),
+                builder: (_, __) => const CloudPage(),
                 routes: [
+                  // The WebDAV folder browser. The directory travels as a
+                  // query parameter rather than a path segment because it is
+                  // full of slashes that would otherwise read as route
+                  // structure.
+                  GoRoute(
+                    path: 'dir',
+                    builder: (context, state) => CloudFolderPage(
+                      directoryPath: state.uri.queryParameters['path'] ?? '',
+                    ),
+                  ),
                   GoRoute(
                     path: 'folder/:serverId',
                     builder: (context, state) {

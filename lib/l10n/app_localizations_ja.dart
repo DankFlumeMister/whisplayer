@@ -278,7 +278,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get songsPageEmpty => '曲がありません。設定から音楽をスキャンしてください';
 
   @override
-  String get folderDetailEmpty => '该文件夹暂无歌曲';
+  String get folderDetailEmpty => 'このフォルダには曲がありません';
 
   @override
   String get recentTitle => '最近再生した曲';
@@ -692,4 +692,72 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get playlistDetailTitleFallback => 'プレイリスト';
+
+  @override
+  String get webdavEntry => 'WebDAV ソース';
+
+  @override
+  String get webdavEntrySubtitle => 'ファイルサーバーに直接接続（Subsonic 不要）';
+
+  @override
+  String get webdavNoServerYet => 'WebDAV ソースがありません — 右下のボタンで追加';
+
+  @override
+  String get addWebdavTitle => 'WebDAV ソースを追加';
+
+  @override
+  String get fieldToken => 'トークン';
+
+  @override
+  String get fieldTokenHint => 'サーバー起動時に設定した合言葉';
+
+  @override
+  String get fieldRootPath => '開始ディレクトリ';
+
+  @override
+  String deleteWebdavTitle(String name) {
+    return '$name を削除しますか？';
+  }
+
+  @override
+  String get deleteWebdavBody => '接続のみ削除されます。サーバー上のファイルは変更されません。';
+
+  @override
+  String get closeAction => '閉じる';
+
+  @override
+  String get scanFailedPrefix => '失敗';
+
+  @override
+  String countSubfolders(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n 個のサブフォルダ',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cloudLibraryEmpty => 'クラウド楽曲はまだありません。先に設定からスキャンしてください';
+
+  @override
+  String get permissionBlockedTitle => '権限を手動で有効にする必要があります';
+
+  @override
+  String get permissionBlockedBody =>
+      'システムはもう許可ダイアログを表示しません。アプリの設定で「音楽とオーディオ」へのアクセスを許可してから、もう一度スキャンしてください。';
+
+  @override
+  String get openSettingsAction => '設定を開く';
+
+  @override
+  String get clearAndRescanAction => '消去して再スキャン';
+
+  @override
+  String get clearAndRescanTitle => 'クラウドのデータを消去して再スキャンしますか？';
+
+  @override
+  String get clearAndRescanBody =>
+      '取り込み済みのクラウド楽曲を削除してから、音源全体を再スキャンします。ローカル楽曲は影響を受けませんが、スキャン完了までクラウド楽曲は表示されません。';
 }

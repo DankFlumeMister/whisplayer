@@ -5,11 +5,32 @@ import 'package:just_audio/just_audio.dart';
 import 'package:whisplayer/domain/entities/playback.dart';
 import 'package:whisplayer/domain/repositories/audio_engine.dart';
 
+/// Supplies per-URI request headers, or `null` when a URI needs none.
+///
+/// WebDAV is the motivating case: its shared token travels as an
+/// `Authorization` header because putting it in the URL would leak it into
+/// logs, crash dumps and the lock-screen media metadata.
+typedef StreamHeadersResolver = Future<Map<String, String>?> Function(Uri uri);
+
 class JustAudioEngine implements AudioEngine {
-  JustAudioEngine({AudioPlayer? player})
-      : _player = player ?? AudioPlayer();
+  /// Creates an engine.
+  ///
+  /// [useProxyForRequestHeaders] defaults to `false`, which lets ExoPlayer
+  /// (Android) and AVFoundation (iOS/macOS) send headers natively. Leaving it
+  /// `true` makes just_audio spin up a cleartext local HTTP proxy instead —
+  /// slower, and it meddles with the byte-range requests that seeking relies
+  /// on. Flip it back if a device turns out to drop native headers.
+  JustAudioEngine({
+    AudioPlayer? player,
+    this.headersResolver,
+    this.useProxyForRequestHeaders = false,
+  }) : _player = player ?? AudioPlayer(
+            useProxyForRequestHeaders: useProxyForRequestHeaders,
+          );
 
   final AudioPlayer _player;
+  final StreamHeadersResolver? headersResolver;
+  final bool useProxyForRequestHeaders;
   final _snapshots = StreamController<PlaybackSnapshot>.broadcast();
   final _subs = <StreamSubscription<dynamic>>[];
 
@@ -72,17 +93,37 @@ class JustAudioEngine implements AudioEngine {
     required List<String> uris,
     required int startIndex,
     int? startPositionMs,
-  }) {
-    final sources = [
-      for (final uri in uris) AudioSource.uri(Uri.parse(uri)),
-    ];
-    return _player.setAudioSources(
+  }) async {
+    final sources = <AudioSource>[];
+    for (final uri in uris) {
+      final parsed = Uri.tryParse(uri);
+      if (parsed == null) {
+        continue;
+      }
+      final headers = await _headersFor(parsed);
+      sources.add(AudioSource.uri(parsed, headers: headers));
+    }
+    await _player.setAudioSources(
       sources,
       initialIndex: startIndex,
       initialPosition: startPositionMs == null
           ? null
           : Duration(milliseconds: startPositionMs),
     );
+  }
+
+  /// A resolver that throws must not cost the user their queue — fall back
+  /// to a header-less source and let the server reject it if it must.
+  Future<Map<String, String>?> _headersFor(Uri uri) async {
+    final resolver = headersResolver;
+    if (resolver == null) {
+      return null;
+    }
+    try {
+      return await resolver(uri);
+    } on Object catch (_) {
+      return null;
+    }
   }
 
   @override

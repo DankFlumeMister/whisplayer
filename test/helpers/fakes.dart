@@ -8,6 +8,7 @@ import 'package:whisplayer/domain/entities/play_history_entry.dart';
 import 'package:whisplayer/domain/entities/play_stats.dart';
 import 'package:whisplayer/domain/entities/playback.dart';
 import 'package:whisplayer/domain/entities/song.dart';
+import 'package:whisplayer/domain/entities/source_type.dart';
 import 'package:whisplayer/domain/repositories/audio_engine.dart';
 import 'package:whisplayer/domain/repositories/library_repository.dart';
 import 'package:whisplayer/domain/repositories/playback_record_repository.dart';
@@ -165,7 +166,8 @@ class FakeLibraryRepository implements LibraryRepository {
   }
 
   @override
-  Stream<List<Album>> watchAlbums() => Stream.value(const <Album>[]);
+  Stream<List<Album>> watchAlbums({SourceType? sourceType}) =>
+      Stream.value(const <Album>[]);
 
   @override
   Stream<List<Artist>> watchArtists() => Stream.value(const <Artist>[]);

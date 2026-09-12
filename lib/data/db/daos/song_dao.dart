@@ -9,19 +9,23 @@ import 'package:whisplayer/domain/entities/source_type.dart';
 
 part 'song_dao.g.dart';
 
+/// Rows staged per `INSERT` when cleaning up after a scan. Small enough to stay
+/// well inside SQLite's bound-parameter limit on every platform.
+const int _pathChunk = 400;
+
 @DriftAccessor(tables: [Songs, Artists, Albums, PlayHistory])
 class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
   SongDao(super.db);
 
   JoinedSelectStatement<HasResultSet, dynamic> _query({
-    bool localOnly = false,
+    SourceType? sourceType,
   }) {
     final q = select(songs).join([
       leftOuterJoin(artists, artists.id.equalsExp(songs.artistId)),
       leftOuterJoin(albums, albums.id.equalsExp(songs.albumId)),
     ]);
-    if (localOnly) {
-      q.where(songs.sourceType.equals(SourceType.local.index));
+    if (sourceType != null) {
+      q.where(songs.sourceType.equals(sourceType.index));
     }
     return q;
   }
@@ -70,9 +74,9 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
   Stream<List<Song>> watchSongs({
     SongSort sort = SongSort.title,
     bool descending = false,
-    bool localOnly = false,
+    SourceType? sourceType,
   }) {
-    final q = _query(localOnly: localOnly)
+    final q = _query(sourceType: sourceType)
       ..orderBy([_order(sort, descending)]);
     return q.watch().map((rows) => rows.map(_map).toList());
   }
@@ -115,7 +119,7 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
   Future<List<Song>> search(
     String query, {
     int limit = 200,
-    bool localOnly = false,
+    SourceType? sourceType,
   }) async {
     final tokens = query
         .toLowerCase()
@@ -138,7 +142,7 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
       return const [];
     }
     final ids = idRows.map((r) => r.read<int>('rowid')).toList();
-    final q = _query(localOnly: localOnly)..where(songs.id.isIn(ids));
+    final q = _query(sourceType: sourceType)..where(songs.id.isIn(ids));
     final rows = await q.get();
     final byId = {for (final s in rows.map(_map)) s.id: s};
     return [
@@ -146,6 +150,57 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
         if (byId[id] != null) byId[id]!,
     ];
   }
+
+  /// Every song path of [sourceType], for rebuilding a directory tree.
+  ///
+  /// Reads one column instead of whole rows: the cloud browser only needs the
+  /// *shape* of the paths, and a music share can hold tens of thousands of
+  /// files.
+  Stream<List<String>> watchPaths({required SourceType sourceType}) {
+    final q = selectOnly(songs)
+      ..addColumns([songs.path])
+      ..where(songs.sourceType.equalsValue(sourceType));
+    return q.watch().map(
+      (rows) => [for (final row in rows) row.read(songs.path)!],
+    );
+  }
+
+  /// Songs sitting directly inside [directoryPath] — never deeper.
+  ///
+  /// [directoryPath] is an absolute logical prefix — `webdav://1/RJ01008335`,
+  /// or just `webdav://1` for the share root.
+  ///
+  /// Two stages, each doing what it is good at. SQL narrows to the whole
+  /// *subtree* with a half-open range, standing in for `LIKE 'prefix/%'` on
+  /// purpose: file names may legally contain `%` or `_`, which are wildcards
+  /// to `LIKE` and would have to be escaped to stay literal. The range also
+  /// keeps sibling servers apart, since `webdav://10/...` falls outside the
+  /// bounds built from `webdav://1`. Dart then drops the deeper rows, because
+  /// "exactly one more path segment" is not expressible as a range.
+  Stream<List<Song>> watchSongsInDirectory({required String directoryPath}) {
+    final prefix = '$directoryPath/';
+    final q = _query()
+      ..where(
+        songs.path.isBiggerOrEqualValue(prefix) &
+            songs.path.isSmallerThanValue('${directoryPath}0'),
+      )
+      ..orderBy([OrderingTerm.asc(songs.path)]);
+    return q.watch().map(
+          (rows) => [
+            for (final row in rows)
+              if (!row
+                  .readTable(songs)
+                  .path
+                  .substring(prefix.length)
+                  .contains('/'))
+                _map(row),
+          ],
+        );
+  }
+
+  /// One-shot read of [watchSongsInDirectory].
+  Future<List<Song>> songsInDirectory({required String directoryPath}) =>
+      watchSongsInDirectory(directoryPath: directoryPath).first;
 
   Future<List<ExistingSongInfo>> loadExistingLight() async {
     final rows = await select(songs).get();
@@ -185,6 +240,16 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
     );
   }
 
+  /// Stores a duration the player learned while streaming.
+  ///
+  /// Callers only pass positive values, and only for songs whose duration is
+  /// still unknown, so this can never replace a good number with a zero.
+  Future<void> setDuration(int songId, {required int durationMs}) {
+    return (update(songs)..where((t) => t.id.equals(songId))).write(
+      SongsCompanion(durationMs: Value(durationMs)),
+    );
+  }
+
   Future<void> recordPlayback({
     required int songId,
     required int playedMs,
@@ -215,29 +280,88 @@ class SongDao extends DatabaseAccessor<AppDatabase> with _$SongDaoMixin {
     });
   }
 
-  Future<int> removeMissingFrom(Set<String> validPaths) {
+  /// Deletes songs of [sourceType] whose path is absent from [validPaths].
+  ///
+  /// Scoped to a single source on purpose. Deleting every path outside
+  /// [validPaths] regardless of origin means a WebDAV scan would wipe the
+  /// whole local library, and a local scan would wipe every synced remote
+  /// row — an empty [validPaths] (a share that went offline, say) would empty
+  /// the table outright. Each source only ever cleans up after itself.
+  ///
+  /// The surviving paths are staged in a temporary table rather than inlined
+  /// as `NOT IN (?, ?, …)`. That form spends one bound parameter per path and
+  /// a real library runs to tens of thousands of files; past SQLite's limit
+  /// the statement fails outright, and since this is the only thing that ever
+  /// deletes rows, the failure would be silent and permanent.
+  Future<int> removeMissingFrom(
+    Set<String> validPaths, {
+    required SourceType sourceType,
+  }) {
     return transaction(() async {
-      var removed = 0;
       if (validPaths.isEmpty) {
-        removed = await delete(songs).go();
-      } else {
-        removed = await (delete(songs)..where(
-          (t) => t.path.isNotIn(validPaths),
-        )).go();
+        return _deleteAllOfSource(sourceType);
       }
       await customStatement(
-        'DELETE FROM albums WHERE id NOT IN '
-        '(SELECT DISTINCT album_id FROM songs WHERE album_id IS NOT NULL)',
+        'CREATE TEMP TABLE IF NOT EXISTS _scan_paths '
+        '(path TEXT PRIMARY KEY)',
       );
-      await customStatement(
-        'DELETE FROM artists WHERE id NOT IN ( '
-        'SELECT artist_id FROM songs '
-        'WHERE artist_id IS NOT NULL '
-        'UNION '
-        'SELECT artist_id FROM albums '
-        'WHERE artist_id IS NOT NULL)',
-      );
-      return removed;
+      try {
+        await customStatement('DELETE FROM _scan_paths');
+        final paths = validPaths.toList(growable: false);
+        for (var start = 0; start < paths.length; start += _pathChunk) {
+          final end = start + _pathChunk < paths.length
+              ? start + _pathChunk
+              : paths.length;
+          final slice = paths.sublist(start, end);
+          final values = List<String>.filled(slice.length, '(?)').join(',');
+          await customUpdate(
+            'INSERT OR IGNORE INTO _scan_paths (path) VALUES $values',
+            variables: [for (final path in slice) Variable<String>(path)],
+            updates: {songs},
+          );
+        }
+        final removed = await customUpdate(
+          'DELETE FROM songs WHERE source_type = ? '
+          'AND path NOT IN (SELECT path FROM _scan_paths)',
+          variables: [Variable<int>(sourceType.index)],
+          updates: {songs},
+        );
+        await _pruneOrphans();
+        return removed;
+      } finally {
+        await customStatement('DROP TABLE IF EXISTS _scan_paths');
+      }
     });
+  }
+
+  /// Deletes every song of [sourceType], for a deliberate clear-and-rescan.
+  ///
+  /// Returns how many rows were removed. Other sources are untouched.
+  Future<int> deleteBySource(SourceType sourceType) {
+    return transaction(() => _deleteAllOfSource(sourceType));
+  }
+
+  Future<int> _deleteAllOfSource(SourceType sourceType) async {
+    final removed = await (delete(songs)
+          ..where((t) => t.sourceType.equalsValue(sourceType)))
+        .go();
+    await _pruneOrphans();
+    return removed;
+  }
+
+  /// Drops albums and artists left with nothing pointing at them.
+  Future<void> _pruneOrphans() async {
+    await customStatement(
+      'DELETE FROM albums WHERE id NOT IN '
+      '(SELECT DISTINCT album_id FROM songs WHERE album_id IS NOT NULL)',
+    );
+    await customStatement(
+      'DELETE FROM artists WHERE id NOT IN ( '
+      'SELECT artist_id FROM songs '
+      'WHERE artist_id IS NOT NULL '
+      'UNION '
+      'SELECT artist_id FROM albums '
+      'WHERE artist_id IS NOT NULL)',
+    );
   }
 }

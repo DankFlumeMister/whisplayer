@@ -3863,6 +3863,404 @@ class RemoteServersCompanion extends UpdateCompanion<RemoteServerRow> {
   }
 }
 
+class $WebDavServersTable extends WebDavServers
+    with TableInfo<$WebDavServersTable, WebDavServerRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WebDavServersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _baseUrlMeta = const VerificationMeta(
+    'baseUrl',
+  );
+  @override
+  late final GeneratedColumn<String> baseUrl = GeneratedColumn<String>(
+    'base_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _usernameMeta = const VerificationMeta(
+    'username',
+  );
+  @override
+  late final GeneratedColumn<String> username = GeneratedColumn<String>(
+    'username',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rootPathMeta = const VerificationMeta(
+    'rootPath',
+  );
+  @override
+  late final GeneratedColumn<String> rootPath = GeneratedColumn<String>(
+    'root_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('/'),
+  );
+  static const VerificationMeta _addedAtMsMeta = const VerificationMeta(
+    'addedAtMs',
+  );
+  @override
+  late final GeneratedColumn<int> addedAtMs = GeneratedColumn<int>(
+    'added_at_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    baseUrl,
+    username,
+    rootPath,
+    addedAtMs,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'web_dav_servers';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WebDavServerRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('base_url')) {
+      context.handle(
+        _baseUrlMeta,
+        baseUrl.isAcceptableOrUnknown(data['base_url']!, _baseUrlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_baseUrlMeta);
+    }
+    if (data.containsKey('username')) {
+      context.handle(
+        _usernameMeta,
+        username.isAcceptableOrUnknown(data['username']!, _usernameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_usernameMeta);
+    }
+    if (data.containsKey('root_path')) {
+      context.handle(
+        _rootPathMeta,
+        rootPath.isAcceptableOrUnknown(data['root_path']!, _rootPathMeta),
+      );
+    }
+    if (data.containsKey('added_at_ms')) {
+      context.handle(
+        _addedAtMsMeta,
+        addedAtMs.isAcceptableOrUnknown(data['added_at_ms']!, _addedAtMsMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_addedAtMsMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WebDavServerRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WebDavServerRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      baseUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}base_url'],
+      )!,
+      username: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}username'],
+      )!,
+      rootPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}root_path'],
+      )!,
+      addedAtMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}added_at_ms'],
+      )!,
+    );
+  }
+
+  @override
+  $WebDavServersTable createAlias(String alias) {
+    return $WebDavServersTable(attachedDatabase, alias);
+  }
+}
+
+class WebDavServerRow extends DataClass implements Insertable<WebDavServerRow> {
+  final int id;
+  final String name;
+  final String baseUrl;
+  final String username;
+
+  /// Server-relative directory the scan starts from; `/` scans everything.
+  final String rootPath;
+  final int addedAtMs;
+  const WebDavServerRow({
+    required this.id,
+    required this.name,
+    required this.baseUrl,
+    required this.username,
+    required this.rootPath,
+    required this.addedAtMs,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['base_url'] = Variable<String>(baseUrl);
+    map['username'] = Variable<String>(username);
+    map['root_path'] = Variable<String>(rootPath);
+    map['added_at_ms'] = Variable<int>(addedAtMs);
+    return map;
+  }
+
+  WebDavServersCompanion toCompanion(bool nullToAbsent) {
+    return WebDavServersCompanion(
+      id: Value(id),
+      name: Value(name),
+      baseUrl: Value(baseUrl),
+      username: Value(username),
+      rootPath: Value(rootPath),
+      addedAtMs: Value(addedAtMs),
+    );
+  }
+
+  factory WebDavServerRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WebDavServerRow(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      baseUrl: serializer.fromJson<String>(json['baseUrl']),
+      username: serializer.fromJson<String>(json['username']),
+      rootPath: serializer.fromJson<String>(json['rootPath']),
+      addedAtMs: serializer.fromJson<int>(json['addedAtMs']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'baseUrl': serializer.toJson<String>(baseUrl),
+      'username': serializer.toJson<String>(username),
+      'rootPath': serializer.toJson<String>(rootPath),
+      'addedAtMs': serializer.toJson<int>(addedAtMs),
+    };
+  }
+
+  WebDavServerRow copyWith({
+    int? id,
+    String? name,
+    String? baseUrl,
+    String? username,
+    String? rootPath,
+    int? addedAtMs,
+  }) => WebDavServerRow(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    baseUrl: baseUrl ?? this.baseUrl,
+    username: username ?? this.username,
+    rootPath: rootPath ?? this.rootPath,
+    addedAtMs: addedAtMs ?? this.addedAtMs,
+  );
+  WebDavServerRow copyWithCompanion(WebDavServersCompanion data) {
+    return WebDavServerRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      baseUrl: data.baseUrl.present ? data.baseUrl.value : this.baseUrl,
+      username: data.username.present ? data.username.value : this.username,
+      rootPath: data.rootPath.present ? data.rootPath.value : this.rootPath,
+      addedAtMs: data.addedAtMs.present ? data.addedAtMs.value : this.addedAtMs,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WebDavServerRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('baseUrl: $baseUrl, ')
+          ..write('username: $username, ')
+          ..write('rootPath: $rootPath, ')
+          ..write('addedAtMs: $addedAtMs')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, baseUrl, username, rootPath, addedAtMs);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WebDavServerRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.baseUrl == this.baseUrl &&
+          other.username == this.username &&
+          other.rootPath == this.rootPath &&
+          other.addedAtMs == this.addedAtMs);
+}
+
+class WebDavServersCompanion extends UpdateCompanion<WebDavServerRow> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<String> baseUrl;
+  final Value<String> username;
+  final Value<String> rootPath;
+  final Value<int> addedAtMs;
+  const WebDavServersCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.baseUrl = const Value.absent(),
+    this.username = const Value.absent(),
+    this.rootPath = const Value.absent(),
+    this.addedAtMs = const Value.absent(),
+  });
+  WebDavServersCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required String baseUrl,
+    required String username,
+    this.rootPath = const Value.absent(),
+    required int addedAtMs,
+  }) : name = Value(name),
+       baseUrl = Value(baseUrl),
+       username = Value(username),
+       addedAtMs = Value(addedAtMs);
+  static Insertable<WebDavServerRow> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? baseUrl,
+    Expression<String>? username,
+    Expression<String>? rootPath,
+    Expression<int>? addedAtMs,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (baseUrl != null) 'base_url': baseUrl,
+      if (username != null) 'username': username,
+      if (rootPath != null) 'root_path': rootPath,
+      if (addedAtMs != null) 'added_at_ms': addedAtMs,
+    });
+  }
+
+  WebDavServersCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<String>? baseUrl,
+    Value<String>? username,
+    Value<String>? rootPath,
+    Value<int>? addedAtMs,
+  }) {
+    return WebDavServersCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      baseUrl: baseUrl ?? this.baseUrl,
+      username: username ?? this.username,
+      rootPath: rootPath ?? this.rootPath,
+      addedAtMs: addedAtMs ?? this.addedAtMs,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (baseUrl.present) {
+      map['base_url'] = Variable<String>(baseUrl.value);
+    }
+    if (username.present) {
+      map['username'] = Variable<String>(username.value);
+    }
+    if (rootPath.present) {
+      map['root_path'] = Variable<String>(rootPath.value);
+    }
+    if (addedAtMs.present) {
+      map['added_at_ms'] = Variable<int>(addedAtMs.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WebDavServersCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('baseUrl: $baseUrl, ')
+          ..write('username: $username, ')
+          ..write('rootPath: $rootPath, ')
+          ..write('addedAtMs: $addedAtMs')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3876,6 +4274,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PlayHistoryTable playHistory = $PlayHistoryTable(this);
   late final $SettingsKvTable settingsKv = $SettingsKvTable(this);
   late final $RemoteServersTable remoteServers = $RemoteServersTable(this);
+  late final $WebDavServersTable webDavServers = $WebDavServersTable(this);
   late final SongDao songDao = SongDao(this as AppDatabase);
   late final AlbumDao albumDao = AlbumDao(this as AppDatabase);
   late final ArtistDao artistDao = ArtistDao(this as AppDatabase);
@@ -3883,6 +4282,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final HistoryDao historyDao = HistoryDao(this as AppDatabase);
   late final SettingsDao settingsDao = SettingsDao(this as AppDatabase);
   late final RemoteServerDao remoteServerDao = RemoteServerDao(
+    this as AppDatabase,
+  );
+  late final WebDavServerDao webDavServerDao = WebDavServerDao(
     this as AppDatabase,
   );
   @override
@@ -3898,6 +4300,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     playHistory,
     settingsKv,
     remoteServers,
+    webDavServers,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4170,7 +4573,7 @@ class $$ArtistsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ArtistsTable, ArtistRow>(table),
                   $$ArtistsTableReferences(db, table, e),
                 ),
               )
@@ -4572,8 +4975,10 @@ class $$AlbumsTableTableManager
               ),
           withReferenceMapper: (p0) => p0
               .map(
-                (e) =>
-                    (e.readTable(table), $$AlbumsTableReferences(db, table, e)),
+                (e) => (
+                  e.readTable<$AlbumsTable, AlbumRow>(table),
+                  $$AlbumsTableReferences(db, table, e),
+                ),
               )
               .toList(),
           prefetchHooksCallback: ({artistId = false, songsRefs = false}) {
@@ -5636,8 +6041,10 @@ class $$SongsTableTableManager
               ),
           withReferenceMapper: (p0) => p0
               .map(
-                (e) =>
-                    (e.readTable(table), $$SongsTableReferences(db, table, e)),
+                (e) => (
+                  e.readTable<$SongsTable, SongRow>(table),
+                  $$SongsTableReferences(db, table, e),
+                ),
               )
               .toList(),
           prefetchHooksCallback:
@@ -5992,7 +6399,7 @@ class $$PlaylistsTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$PlaylistsTable, PlaylistRow>(table),
                   $$PlaylistsTableReferences(db, table, e),
                 ),
               )
@@ -6374,7 +6781,7 @@ class $$PlaylistEntriesTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$PlaylistEntriesTable, PlaylistEntryRow>(table),
                   $$PlaylistEntriesTableReferences(db, table, e),
                 ),
               )
@@ -6696,7 +7103,7 @@ class $$PlayHistoryTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$PlayHistoryTable, PlayHistoryRow>(table),
                   $$PlayHistoryTableReferences(db, table, e),
                 ),
               )
@@ -6870,7 +7277,16 @@ class $$SettingsKvTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$SettingsKvTable, SettingsKvRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $SettingsKvTable,
+                    SettingsKvRow
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -7064,7 +7480,16 @@ class $$RemoteServersTableTableManager
                 addedAtMs: addedAtMs,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$RemoteServersTable, RemoteServerRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $RemoteServersTable,
+                    RemoteServerRow
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -7088,6 +7513,228 @@ typedef $$RemoteServersTableProcessedTableManager =
       RemoteServerRow,
       PrefetchHooks Function()
     >;
+typedef $$WebDavServersTableCreateCompanionBuilder =
+    WebDavServersCompanion Function({
+      Value<int> id,
+      required String name,
+      required String baseUrl,
+      required String username,
+      Value<String> rootPath,
+      required int addedAtMs,
+    });
+typedef $$WebDavServersTableUpdateCompanionBuilder =
+    WebDavServersCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<String> baseUrl,
+      Value<String> username,
+      Value<String> rootPath,
+      Value<int> addedAtMs,
+    });
+
+class $$WebDavServersTableFilterComposer
+    extends Composer<_$AppDatabase, $WebDavServersTable> {
+  $$WebDavServersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get baseUrl => $composableBuilder(
+    column: $table.baseUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get username => $composableBuilder(
+    column: $table.username,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rootPath => $composableBuilder(
+    column: $table.rootPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get addedAtMs => $composableBuilder(
+    column: $table.addedAtMs,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WebDavServersTableOrderingComposer
+    extends Composer<_$AppDatabase, $WebDavServersTable> {
+  $$WebDavServersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get baseUrl => $composableBuilder(
+    column: $table.baseUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get username => $composableBuilder(
+    column: $table.username,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rootPath => $composableBuilder(
+    column: $table.rootPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get addedAtMs => $composableBuilder(
+    column: $table.addedAtMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WebDavServersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WebDavServersTable> {
+  $$WebDavServersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get baseUrl =>
+      $composableBuilder(column: $table.baseUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get username =>
+      $composableBuilder(column: $table.username, builder: (column) => column);
+
+  GeneratedColumn<String> get rootPath =>
+      $composableBuilder(column: $table.rootPath, builder: (column) => column);
+
+  GeneratedColumn<int> get addedAtMs =>
+      $composableBuilder(column: $table.addedAtMs, builder: (column) => column);
+}
+
+class $$WebDavServersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WebDavServersTable,
+          WebDavServerRow,
+          $$WebDavServersTableFilterComposer,
+          $$WebDavServersTableOrderingComposer,
+          $$WebDavServersTableAnnotationComposer,
+          $$WebDavServersTableCreateCompanionBuilder,
+          $$WebDavServersTableUpdateCompanionBuilder,
+          (
+            WebDavServerRow,
+            BaseReferences<_$AppDatabase, $WebDavServersTable, WebDavServerRow>,
+          ),
+          WebDavServerRow,
+          PrefetchHooks Function()
+        > {
+  $$WebDavServersTableTableManager(_$AppDatabase db, $WebDavServersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WebDavServersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WebDavServersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WebDavServersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> baseUrl = const Value.absent(),
+                Value<String> username = const Value.absent(),
+                Value<String> rootPath = const Value.absent(),
+                Value<int> addedAtMs = const Value.absent(),
+              }) => WebDavServersCompanion(
+                id: id,
+                name: name,
+                baseUrl: baseUrl,
+                username: username,
+                rootPath: rootPath,
+                addedAtMs: addedAtMs,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required String baseUrl,
+                required String username,
+                Value<String> rootPath = const Value.absent(),
+                required int addedAtMs,
+              }) => WebDavServersCompanion.insert(
+                id: id,
+                name: name,
+                baseUrl: baseUrl,
+                username: username,
+                rootPath: rootPath,
+                addedAtMs: addedAtMs,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$WebDavServersTable, WebDavServerRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $WebDavServersTable,
+                    WebDavServerRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WebDavServersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WebDavServersTable,
+      WebDavServerRow,
+      $$WebDavServersTableFilterComposer,
+      $$WebDavServersTableOrderingComposer,
+      $$WebDavServersTableAnnotationComposer,
+      $$WebDavServersTableCreateCompanionBuilder,
+      $$WebDavServersTableUpdateCompanionBuilder,
+      (
+        WebDavServerRow,
+        BaseReferences<_$AppDatabase, $WebDavServersTable, WebDavServerRow>,
+      ),
+      WebDavServerRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7108,4 +7755,6 @@ class $AppDatabaseManager {
       $$SettingsKvTableTableManager(_db, _db.settingsKv);
   $$RemoteServersTableTableManager get remoteServers =>
       $$RemoteServersTableTableManager(_db, _db.remoteServers);
+  $$WebDavServersTableTableManager get webDavServers =>
+      $$WebDavServersTableTableManager(_db, _db.webDavServers);
 }

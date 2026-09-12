@@ -124,6 +124,24 @@ class SettingsPage extends ConsumerWidget {
               ),
             ),
           ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.cloud_outlined),
+                  title: Text(l10n.webdavEntry),
+                  subtitle: Text(l10n.webdavEntrySubtitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/settings/webdav-servers'),
+                ),
+              ),
+            ),
+          ),
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(16, 8, 16, 0),

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:whisplayer/data/db/app_database.dart';
 import 'package:whisplayer/domain/entities/existing_song_info.dart';
 import 'package:whisplayer/domain/entities/scanned_song.dart';
+import 'package:whisplayer/domain/entities/source_type.dart';
 import 'package:whisplayer/domain/repositories/library_writer_repository.dart';
 
 class DriftLibraryWriterRepository implements LibraryWriterRepository {
@@ -26,8 +27,19 @@ class DriftLibraryWriterRepository implements LibraryWriterRepository {
   }
 
   @override
-  Future<int> removeSongsMissingFrom(Set<String> validPaths) {
-    return _db.songDao.removeMissingFrom(validPaths);
+  Future<int> removeSongsMissingFrom(
+    Set<String> validPaths, {
+    required SourceType sourceType,
+  }) {
+    return _db.songDao.removeMissingFrom(
+      validPaths,
+      sourceType: sourceType,
+    );
+  }
+
+  @override
+  Future<int> removeAllOfSource(SourceType sourceType) {
+    return _db.songDao.deleteBySource(sourceType);
   }
 
   @override
@@ -37,6 +49,14 @@ class DriftLibraryWriterRepository implements LibraryWriterRepository {
   }) {
     return (_db.update(_db.songs)..where((t) => t.id.equals(songId)))
         .write(SongsCompanion(lyricsText: Value(text)));
+  }
+
+  @override
+  Future<void> setSongDuration({
+    required int songId,
+    required int durationMs,
+  }) {
+    return _db.songDao.setDuration(songId, durationMs: durationMs);
   }
 
   Future<int?> _resolveArtist(ScannedSong song) async {

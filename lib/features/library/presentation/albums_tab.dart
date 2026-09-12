@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:whisplayer/core/providers/repository_providers.dart';
 import 'package:whisplayer/domain/entities/album.dart';
+import 'package:whisplayer/domain/entities/source_type.dart';
 import 'package:whisplayer/l10n/app_localizations.dart';
 
 class AlbumsTab extends ConsumerWidget {
@@ -19,7 +20,7 @@ class AlbumsTab extends ConsumerWidget {
     final repo = ref.watch(libraryRepositoryProvider);
     final l10n = AppLocalizations.of(context);
     return StreamBuilder<List<Album>>(
-      stream: repo.watchAlbums(),
+      stream: repo.watchAlbums(sourceType: SourceType.local),
       builder: (context, snapshot) {
         final albums = snapshot.data ?? const <Album>[];
         if (albums.isEmpty) {

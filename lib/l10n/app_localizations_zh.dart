@@ -690,6 +690,74 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get playlistDetailTitleFallback => '播放列表';
+
+  @override
+  String get webdavEntry => 'WebDAV 音源';
+
+  @override
+  String get webdavEntrySubtitle => '直连文件服务器，不依赖 Subsonic';
+
+  @override
+  String get webdavNoServerYet => '还没有 WebDAV 音源 —— 点右下角按钮添加';
+
+  @override
+  String get addWebdavTitle => '添加 WebDAV 音源';
+
+  @override
+  String get fieldToken => '令牌';
+
+  @override
+  String get fieldTokenHint => '服务端启动时设置的口令';
+
+  @override
+  String get fieldRootPath => '起始目录';
+
+  @override
+  String deleteWebdavTitle(String name) {
+    return '删除 $name？';
+  }
+
+  @override
+  String get deleteWebdavBody => '只会移除这个连接，服务器上的文件不会被改动。';
+
+  @override
+  String get closeAction => '关闭';
+
+  @override
+  String get scanFailedPrefix => '失败';
+
+  @override
+  String countSubfolders(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n 个子目录',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cloudLibraryEmpty => '还没有云端音乐，先到设置里扫描一次';
+
+  @override
+  String get permissionBlockedTitle => '需要手动开启权限';
+
+  @override
+  String get permissionBlockedBody =>
+      '系统不会再弹出授权窗口。请到系统设置里手动开启「音乐和音频」权限，然后回到这里重新扫描。';
+
+  @override
+  String get openSettingsAction => '打开系统设置';
+
+  @override
+  String get clearAndRescanAction => '清空并重扫';
+
+  @override
+  String get clearAndRescanTitle => '清空云端数据并重扫？';
+
+  @override
+  String get clearAndRescanBody =>
+      '会先删除已导入的云端歌曲，再重新扫描整个音源。本地歌曲不受影响，但扫描完成前云端音乐会暂时消失。';
 }
 
 /// The translations for Chinese, as used in Taiwan (`zh_TW`).
@@ -963,6 +1031,9 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get songsPageEmpty => '還沒有歌曲，先去設定裡掃描音樂吧';
+
+  @override
+  String get folderDetailEmpty => '這個資料夾尚無歌曲';
 
   @override
   String get recentTitle => '最近播放';
@@ -1374,4 +1445,72 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get playlistDetailTitleFallback => '播放清單';
+
+  @override
+  String get webdavEntry => 'WebDAV 音源';
+
+  @override
+  String get webdavEntrySubtitle => '直連檔案伺服器，不需 Subsonic';
+
+  @override
+  String get webdavNoServerYet => '還沒有 WebDAV 音源 —— 點右下角按鈕新增';
+
+  @override
+  String get addWebdavTitle => '新增 WebDAV 音源';
+
+  @override
+  String get fieldToken => '權杖';
+
+  @override
+  String get fieldTokenHint => '伺服器啟動時設定的密碼';
+
+  @override
+  String get fieldRootPath => '起始目錄';
+
+  @override
+  String deleteWebdavTitle(String name) {
+    return '刪除 $name？';
+  }
+
+  @override
+  String get deleteWebdavBody => '只會移除這個連線，伺服器上的檔案不會被更動。';
+
+  @override
+  String get closeAction => '關閉';
+
+  @override
+  String get scanFailedPrefix => '失敗';
+
+  @override
+  String countSubfolders(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n 個子目錄',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cloudLibraryEmpty => '還沒有雲端音樂，先到設定裡掃描一次';
+
+  @override
+  String get permissionBlockedTitle => '需要手動開啟權限';
+
+  @override
+  String get permissionBlockedBody =>
+      '系統不會再彈出授權視窗。請到系統設定手動開啟「音樂和音訊」權限，再回來重新掃描。';
+
+  @override
+  String get openSettingsAction => '開啟系統設定';
+
+  @override
+  String get clearAndRescanAction => '清空並重新掃描';
+
+  @override
+  String get clearAndRescanTitle => '清空雲端資料並重新掃描？';
+
+  @override
+  String get clearAndRescanBody =>
+      '會先刪除已匯入的雲端歌曲，再重新掃描整個音源。本地歌曲不受影響，但掃描完成前雲端音樂會暫時消失。';
 }

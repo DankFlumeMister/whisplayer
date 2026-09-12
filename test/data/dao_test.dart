@@ -23,10 +23,11 @@ void main() {
     int? artistId,
     int? albumId,
     int addedAt = 1000,
+    SourceType sourceType = SourceType.local,
   }) {
     return SongsCompanion.insert(
       path: path,
-      sourceType: SourceType.local,
+      sourceType: sourceType,
       title: title,
       fileName: title,
       format: 'flac',
@@ -127,13 +128,38 @@ void main() {
       song('/drop.flac', 'D', albumId: dropAlbum),
     ]);
 
-    final removed = await db.songDao.removeMissingFrom({'/keep.flac'});
+    final removed = await db.songDao.removeMissingFrom(
+      {'/keep.flac'},
+      sourceType: SourceType.local,
+    );
     expect(removed, 1);
 
     final albums = await db.select(db.albums).get();
     expect(albums.map((a) => a.title), ['Keep']);
     final artists = await db.select(db.artists).get();
     expect(artists.map((a) => a.name), ['Artist A']);
+  });
+
+  test('removeMissingFrom never reaches into another source', () async {
+    await db.songDao.upsertAll([
+      song('/local.flac', 'Local'),
+      song('webdav://1/RJ/a.mp3', 'Remote', sourceType: SourceType.webdav),
+      song('subsonic://1/42', 'Cloud', sourceType: SourceType.remote),
+    ]);
+
+    // A WebDAV scan that came back empty (share offline) must delete only
+    // its own rows — not the local library, not the Subsonic rows.
+    final removed = await db.songDao.removeMissingFrom(
+      const <String>{},
+      sourceType: SourceType.webdav,
+    );
+
+    expect(removed, 1);
+    final remaining = await db.select(db.songs).get();
+    expect(
+      remaining.map((row) => row.path).toList()..sort(),
+      <String>['/local.flac', 'subsonic://1/42'],
+    );
   });
 
   test('playlist add, rename, reorder, remove, clear', () async {
@@ -261,19 +287,25 @@ void main() {
     );
 
     final localSongs = await db.songDao
-        .watchSongs(localOnly: true)
+        .watchSongs(sourceType: SourceType.local)
         .map((list) => list.map((s) => s.title).toList())
         .first;
     expect(localSongs, ['Local Song']);
 
-    final localSearch =
-        await db.songDao.search('song', localOnly: true);
+    final localSearch = await db.songDao.search(
+      'song',
+      sourceType: SourceType.local,
+    );
     expect(localSearch.map((s) => s.title), ['Local Song']);
 
-    final albums = await db.albumDao.watchAll(localOnly: true).first;
+    final albums = await db.albumDao
+        .watchAll(sourceType: SourceType.local)
+        .first;
     expect(albums.map((a) => a.title), ['Shared Album']);
 
-    final artists = await db.artistDao.watchAll(localOnly: true).first;
+    final artists = await db.artistDao
+        .watchAll(sourceType: SourceType.local)
+        .first;
     expect(artists.map((a) => a.name), ['Shared Artist']);
   });
 }

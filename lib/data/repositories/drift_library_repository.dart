@@ -2,6 +2,7 @@ import 'package:whisplayer/data/db/app_database.dart';
 import 'package:whisplayer/domain/entities/album.dart';
 import 'package:whisplayer/domain/entities/artist.dart';
 import 'package:whisplayer/domain/entities/song.dart';
+import 'package:whisplayer/domain/entities/source_type.dart';
 import 'package:whisplayer/domain/repositories/library_repository.dart';
 
 class DriftLibraryRepository implements LibraryRepository {
@@ -25,7 +26,7 @@ class DriftLibraryRepository implements LibraryRepository {
     return _db.songDao.watchSongs(
       sort: sort,
       descending: descending,
-      localOnly: true,
+      sourceType: SourceType.local,
     );
   }
 
@@ -45,14 +46,15 @@ class DriftLibraryRepository implements LibraryRepository {
 
   @override
   Future<List<Song>> searchLocalSongs(String query) =>
-      _db.songDao.search(query, localOnly: true);
+      _db.songDao.search(query, sourceType: SourceType.local);
 
   @override
-  Stream<List<Album>> watchAlbums() => _db.albumDao.watchAll(localOnly: true);
+  Stream<List<Album>> watchAlbums({SourceType? sourceType}) =>
+      _db.albumDao.watchAll(sourceType: sourceType);
 
   @override
   Stream<List<Artist>> watchArtists() =>
-      _db.artistDao.watchAll(localOnly: true);
+      _db.artistDao.watchAll(sourceType: SourceType.local);
 
   @override
   Future<void> setFavorite(int songId, {required bool favorite}) =>

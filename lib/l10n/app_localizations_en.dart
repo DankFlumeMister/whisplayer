@@ -285,7 +285,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get songsPageEmpty => 'No songs yet — scan music in Settings first';
 
   @override
-  String get folderDetailEmpty => '该文件夹暂无歌曲';
+  String get folderDetailEmpty => 'No songs in this folder';
 
   @override
   String get recentTitle => 'Recently played';
@@ -702,4 +702,76 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get playlistDetailTitleFallback => 'Playlist';
+
+  @override
+  String get webdavEntry => 'WebDAV source';
+
+  @override
+  String get webdavEntrySubtitle => 'Read files directly, no Subsonic needed';
+
+  @override
+  String get webdavNoServerYet =>
+      'No WebDAV source yet — tap the button below to add one';
+
+  @override
+  String get addWebdavTitle => 'Add WebDAV source';
+
+  @override
+  String get fieldToken => 'Token';
+
+  @override
+  String get fieldTokenHint => 'The secret set when the server started';
+
+  @override
+  String get fieldRootPath => 'Start directory';
+
+  @override
+  String deleteWebdavTitle(String name) {
+    return 'Delete $name?';
+  }
+
+  @override
+  String get deleteWebdavBody =>
+      'Only the connection is removed; nothing on the server is touched.';
+
+  @override
+  String get closeAction => 'Close';
+
+  @override
+  String get scanFailedPrefix => 'Failed';
+
+  @override
+  String countSubfolders(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n subfolders',
+      one: '1 subfolder',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cloudLibraryEmpty =>
+      'No cloud music yet — run a scan in Settings first';
+
+  @override
+  String get permissionBlockedTitle => 'Permission must be enabled manually';
+
+  @override
+  String get permissionBlockedBody =>
+      'The system will not show the permission prompt again. Open the app settings, allow access to music and audio, then come back and scan again.';
+
+  @override
+  String get openSettingsAction => 'Open settings';
+
+  @override
+  String get clearAndRescanAction => 'Clear and rescan';
+
+  @override
+  String get clearAndRescanTitle => 'Clear cloud data and rescan?';
+
+  @override
+  String get clearAndRescanBody =>
+      'Imported cloud songs are deleted first, then the whole source is scanned again. Local songs are untouched, but cloud music disappears until the scan finishes.';
 }

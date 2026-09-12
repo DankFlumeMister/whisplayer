@@ -12,8 +12,13 @@ part 'album_dao.g.dart';
 class AlbumDao extends DatabaseAccessor<AppDatabase> with _$AlbumDaoMixin {
   AlbumDao(super.db);
 
-  /// [localOnly] hides albums whose songs are all remote-sourced.
-  Stream<List<Album>> watchAll({bool localOnly = false}) {
+  /// Restricts the listing to albums holding at least one song of
+  /// [sourceType]. `null` lists every album that has any song at all.
+  ///
+  /// This is what separates the local tab (`SourceType.local`) from the cloud
+  /// tab (`SourceType.webdav`); before it was generalised the only choices
+  /// were "everything" or "local only".
+  Stream<List<Album>> watchAll({SourceType? sourceType}) {
     final songCount = songs.id.count();
     final q = select(albums).join([
       leftOuterJoin(artists, artists.id.equalsExp(albums.artistId)),
@@ -22,8 +27,8 @@ class AlbumDao extends DatabaseAccessor<AppDatabase> with _$AlbumDaoMixin {
       ..addColumns([songCount])
       ..groupBy([albums.id])
       ..orderBy([OrderingTerm.asc(albums.title.lower())]);
-    if (localOnly) {
-      q.where(songs.sourceType.equals(SourceType.local.index));
+    if (sourceType != null) {
+      q.where(songs.sourceType.equals(sourceType.index));
     }
     return q.watch().map(
       (rows) => rows

@@ -1368,6 +1368,120 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'播放列表'**
   String get playlistDetailTitleFallback;
+
+  /// No description provided for @webdavEntry.
+  ///
+  /// In zh, this message translates to:
+  /// **'WebDAV 音源'**
+  String get webdavEntry;
+
+  /// No description provided for @webdavEntrySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'直连文件服务器，不依赖 Subsonic'**
+  String get webdavEntrySubtitle;
+
+  /// No description provided for @webdavNoServerYet.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有 WebDAV 音源 —— 点右下角按钮添加'**
+  String get webdavNoServerYet;
+
+  /// No description provided for @addWebdavTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加 WebDAV 音源'**
+  String get addWebdavTitle;
+
+  /// No description provided for @fieldToken.
+  ///
+  /// In zh, this message translates to:
+  /// **'令牌'**
+  String get fieldToken;
+
+  /// No description provided for @fieldTokenHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务端启动时设置的口令'**
+  String get fieldTokenHint;
+
+  /// No description provided for @fieldRootPath.
+  ///
+  /// In zh, this message translates to:
+  /// **'起始目录'**
+  String get fieldRootPath;
+
+  /// No description provided for @deleteWebdavTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除 {name}？'**
+  String deleteWebdavTitle(String name);
+
+  /// No description provided for @deleteWebdavBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'只会移除这个连接，服务器上的文件不会被改动。'**
+  String get deleteWebdavBody;
+
+  /// No description provided for @closeAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭'**
+  String get closeAction;
+
+  /// No description provided for @scanFailedPrefix.
+  ///
+  /// In zh, this message translates to:
+  /// **'失败'**
+  String get scanFailedPrefix;
+
+  /// No description provided for @countSubfolders.
+  ///
+  /// In zh, this message translates to:
+  /// **'{n,plural,other{{n} 个子目录}}'**
+  String countSubfolders(int n);
+
+  /// No description provided for @cloudLibraryEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有云端音乐，先到设置里扫描一次'**
+  String get cloudLibraryEmpty;
+
+  /// No description provided for @permissionBlockedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要手动开启权限'**
+  String get permissionBlockedTitle;
+
+  /// No description provided for @permissionBlockedBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统不会再弹出授权窗口。请到系统设置里手动开启「音乐和音频」权限，然后回到这里重新扫描。'**
+  String get permissionBlockedBody;
+
+  /// No description provided for @openSettingsAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开系统设置'**
+  String get openSettingsAction;
+
+  /// No description provided for @clearAndRescanAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空并重扫'**
+  String get clearAndRescanAction;
+
+  /// No description provided for @clearAndRescanTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空云端数据并重扫？'**
+  String get clearAndRescanTitle;
+
+  /// No description provided for @clearAndRescanBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'会先删除已导入的云端歌曲，再重新扫描整个音源。本地歌曲不受影响，但扫描完成前云端音乐会暂时消失。'**
+  String get clearAndRescanBody;
 }
 
 class _AppLocalizationsDelegate

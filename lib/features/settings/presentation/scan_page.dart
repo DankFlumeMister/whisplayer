@@ -36,14 +36,7 @@ class ScanPage extends ConsumerWidget {
                   ? () =>
                       ref.read(scanControllerProvider.notifier).cancel()
                   : () async {
-                      if (!await _ensureAudioPermission()) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-              content: Text(l10n.needAudioPermission),
-            ),
-                          );
-                        }
+                      if (!await _ensureAudioPermission(context)) {
                         return;
                       }
                       final allFiles = await _ensureAllFilesAccess();
@@ -75,9 +68,66 @@ class ScanPage extends ConsumerWidget {
     );
   }
 
-  Future<bool> _ensureAudioPermission() async {
-    final status = await Permission.audio.request();
-    return status.isGranted || status.isLimited;
+  /// Asks for read access to the music on the device.
+  ///
+  /// The permission that actually gates the media store depends on the OS
+  /// version, and asking for the wrong one fails *silently*: on Android 13+
+  /// audio needs `READ_MEDIA_AUDIO` (`Permission.audio`), while Android 12 and
+  /// below have no such permission and gate it behind `READ_EXTERNAL_STORAGE`
+  /// (`Permission.storage`). Requesting only `audio` on an older device
+  /// resolves to "denied" without ever showing a dialog — which is exactly
+  /// what "it only shows a message and I cannot grant anything" looks like.
+  ///
+  /// Returns whether the scan may proceed, showing a message when it may not.
+  Future<bool> _ensureAudioPermission(BuildContext context) async {
+    final audio = await Permission.audio.request();
+    if (audio.isGranted || audio.isLimited) {
+      return true;
+    }
+    final storage = await Permission.storage.request();
+    if (storage.isGranted || storage.isLimited) {
+      return true;
+    }
+    if (!context.mounted) {
+      return false;
+    }
+    // Once the OS has stopped offering the dialog, the app settings screen is
+    // the only route left — saying "permission needed" without pointing there
+    // leaves the user with no way forward.
+    if (audio.isPermanentlyDenied || storage.isPermanentlyDenied) {
+      await _offerAppSettings(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).needAudioPermission),
+        ),
+      );
+    }
+    return false;
+  }
+
+  Future<void> _offerAppSettings(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final open = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.permissionBlockedTitle),
+        content: Text(l10n.permissionBlockedBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.cancelAction),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(l10n.openSettingsAction),
+          ),
+        ],
+      ),
+    );
+    if (open ?? false) {
+      await openAppSettings();
+    }
   }
 
   /// Asks for "All files access" so non-media files (lyric sidecars

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,13 +18,21 @@ class PlaylistsPage extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar.large(
+          SliverAppBar(
+            pinned: true,
             title: Text(l10n.playlistTab),
             actions: [
               IconButton(
                 icon: const Icon(Icons.add),
                 tooltip: l10n.createPlaylistTooltip,
                 onPressed: () => _showCreateDialog(context, ref),
+              ),
+              // Settings is always the right-most action so it sits in the
+              // same place on every tab.
+              IconButton(
+                icon: const Icon(Icons.settings_outlined),
+                tooltip: l10n.settingsTitle,
+                onPressed: () => unawaited(context.push('/settings')),
               ),
             ],
           ),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:whisplayer/core/providers/repository_providers.dart';
+import 'package:whisplayer/core/util/natural_compare.dart';
 import 'package:whisplayer/data/navidrome/navidrome_models.dart';
 import 'package:whisplayer/data/remote/remote_library_service.dart';
 import 'package:whisplayer/domain/entities/remote_server.dart';
@@ -34,50 +35,6 @@ class RemoteFolderPage extends ConsumerStatefulWidget {
   @override
   ConsumerState<RemoteFolderPage> createState() => _RemoteFolderPageState();
 }
-
-/// Splits strings into digit and non-digit runs so embedded numbers compare
-/// by value: "track 2" sorts before "track 10".
-int naturalCompare(String a, String b) {
-  var i = 0;
-  var j = 0;
-  while (i < a.length && j < b.length) {
-    final codeA = a.codeUnitAt(i);
-    final codeB = b.codeUnitAt(j);
-    final digitA = _isDigit(codeA);
-    final digitB = _isDigit(codeB);
-    if (digitA && digitB) {
-      final startI = i;
-      final startJ = j;
-      while (i < a.length && _isDigit(a.codeUnitAt(i))) {
-        i++;
-      }
-      while (j < b.length && _isDigit(b.codeUnitAt(j))) {
-        j++;
-      }
-      final numberA = int.tryParse(a.substring(startI, i));
-      final numberB = int.tryParse(b.substring(startJ, j));
-      if (numberA != null && numberB != null && numberA != numberB) {
-        return numberA.compareTo(numberB);
-      }
-      // Equal values with different padding (07 vs 7) — keep stable order.
-      final fallback = a
-          .substring(startI, i)
-          .compareTo(b.substring(startJ, j));
-      if (fallback != 0) {
-        return fallback;
-      }
-    } else {
-      if (codeA != codeB) {
-        return codeA.compareTo(codeB);
-      }
-      i++;
-      j++;
-    }
-  }
-  return (a.length - i).compareTo(b.length - j);
-}
-
-bool _isDigit(int codeUnit) => codeUnit >= 0x30 && codeUnit <= 0x39;
 
 class _RemoteFolderPageState extends ConsumerState<RemoteFolderPage> {
   bool _playingAll = false;

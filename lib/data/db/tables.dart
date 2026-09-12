@@ -158,3 +158,24 @@ class RemoteServers extends Table {
 
   IntColumn get addedAtMs => integer()();
 }
+
+/// Saved WebDAV shares (music sources).
+///
+/// Deliberately separate from [RemoteServers]: the two protocols share a
+/// username/password shape but nothing else — Subsonic's salt/token
+/// handshake has no counterpart here.
+@DataClassName('WebDavServerRow')
+class WebDavServers extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  TextColumn get name => text()();
+
+  TextColumn get baseUrl => text()();
+
+  TextColumn get username => text()();
+
+  /// Server-relative directory the scan starts from; `/` scans everything.
+  TextColumn get rootPath => text().withDefault(const Constant('/'))();
+
+  IntColumn get addedAtMs => integer()();
+}

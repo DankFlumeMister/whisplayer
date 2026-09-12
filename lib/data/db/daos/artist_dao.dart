@@ -12,8 +12,9 @@ part 'artist_dao.g.dart';
 class ArtistDao extends DatabaseAccessor<AppDatabase> with _$ArtistDaoMixin {
   ArtistDao(super.db);
 
-  /// [localOnly] hides artists whose songs are all remote-sourced.
-  Stream<List<Artist>> watchAll({bool localOnly = false}) {
+  /// Restricts the listing to artists holding at least one song of
+  /// [sourceType]; `null` lists every artist with songs.
+  Stream<List<Artist>> watchAll({SourceType? sourceType}) {
     final songCount = songs.id.count();
     final albumCount = songs.albumId.count(distinct: true);
     final q = select(artists).join([
@@ -22,8 +23,8 @@ class ArtistDao extends DatabaseAccessor<AppDatabase> with _$ArtistDaoMixin {
       ..addColumns([songCount, albumCount])
       ..groupBy([artists.id])
       ..orderBy([OrderingTerm.asc(artists.name.lower())]);
-    if (localOnly) {
-      q.where(songs.sourceType.equals(SourceType.local.index));
+    if (sourceType != null) {
+      q.where(songs.sourceType.equals(sourceType.index));
     }
     return q.watch().map(
       (rows) => rows

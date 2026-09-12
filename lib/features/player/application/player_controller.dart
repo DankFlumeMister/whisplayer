@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:whisplayer/core/providers/playback_providers.dart';
 import 'package:whisplayer/core/providers/repository_providers.dart';
+import 'package:whisplayer/core/providers/scanner_providers.dart';
 import 'package:whisplayer/domain/entities/playback.dart';
 import 'package:whisplayer/domain/entities/song.dart';
 import 'package:whisplayer/domain/entities/source_type.dart';
@@ -203,6 +204,7 @@ class PlayerController extends Notifier<PlayerUiState>
         unawaited(_publishCurrentMediaItem());
         unawaited(_saveNow());
       }
+      unawaited(_backfillDurationIfNeeded(snap));
       if (snap.playing && _saver == null) {
         _saver = Timer.periodic(
           const Duration(seconds: 5),
@@ -217,6 +219,38 @@ class PlayerController extends Notifier<PlayerUiState>
       _position.positionMs = snap.positionMs;
     }
     _recorder.noteSnapshot(snap);
+  }
+
+  /// Songs already probed this session, so the write happens at most once
+  /// each even though the engine re-reports its duration on every tick.
+  final Set<int> _durationBackfilled = <int>{};
+
+  /// Persists the duration the engine probed from a WebDAV stream.
+  ///
+  /// Such files carry no embedded tags, so the row starts at 0 and the
+  /// progress bar would stay dead forever. The first real value the engine
+  /// reports is written back — but never over an existing duration, and never
+  /// for a local or Subsonic song (their durations are already known).
+  Future<void> _backfillDurationIfNeeded(PlaybackSnapshot snap) async {
+    final song = state.currentSong;
+    if (song == null ||
+        snap.durationMs <= 0 ||
+        song.durationMs > 0 ||
+        song.sourceType != SourceType.webdav ||
+        !_durationBackfilled.add(song.id)) {
+      return;
+    }
+    try {
+      await ref.read(libraryWriterRepositoryProvider).setSongDuration(
+            songId: song.id,
+            durationMs: snap.durationMs,
+          );
+      await _publishCurrentMediaItem();
+    } on Object catch (_) {
+      // A failed write must not disturb playback; drop the guard so a later
+      // tick can retry.
+      _durationBackfilled.remove(song.id);
+    }
   }
 
   Future<void> playSongs(List<Song> songs, {int startIndex = 0}) async {
@@ -500,16 +534,45 @@ class PlayerController extends Notifier<PlayerUiState>
   /// (server deleted/offline config) we fall back to the raw path so the
   /// engine reports a playback error instead of this call crashing.
   Future<String> _playbackUriFor(Song song) async {
-    if (song.sourceType != SourceType.remote) {
-      return Uri.file(song.path).toString();
+    // `on Object` rather than `on Exception`: the resolvers signal a missing
+    // server with StateError, which is an Error and would otherwise escape
+    // and kill the play call.
+    switch (song.sourceType) {
+      case SourceType.remote:
+        try {
+          return await ref
+              .read(remoteLibraryServiceProvider)
+              .resolveStreamUri(song.path)
+              .then((uri) => uri.toString());
+        } on Object catch (_) {
+          return _fileUri(song.path);
+        }
+      case SourceType.webdav:
+        // The URL stays credential-free; the engine attaches the
+        // Authorization header (see WebDavStreamService.headersFor).
+        try {
+          return await ref
+              .read(webDavStreamServiceProvider)
+              .resolveUri(song.path)
+              .then((uri) => uri.toString());
+        } on Object catch (_) {
+          return _fileUri(song.path);
+        }
+      case SourceType.local:
+        return _fileUri(song.path);
     }
+  }
+
+  /// Last-resort URI for an unresolvable path.
+  ///
+  /// A logical `webdav://` or `subsonic://` path is not a legal file path, so
+  /// [Uri.file] can itself throw; the raw string is returned in that case and
+  /// the engine reports a playback error rather than this call crashing.
+  String _fileUri(String path) {
     try {
-      return await ref
-          .read(remoteLibraryServiceProvider)
-          .resolveStreamUri(song.path)
-          .then((uri) => uri.toString());
-    } on Exception catch (_) {
-      return Uri.file(song.path).toString();
+      return Uri.file(path).toString();
+    } on Object catch (_) {
+      return path;
     }
   }
 
@@ -520,12 +583,17 @@ class PlayerController extends Notifier<PlayerUiState>
   }
 
   MediaItem _mediaItem(Song song) {
+    // A known duration always wins. Only when the row has none (a freshly
+    // synced WebDAV song) does the probed value stand in, so a mid-transition
+    // snapshot can never overwrite a real number.
+    final probed = state.snapshot.durationMs;
+    final durationMs = song.durationMs > 0 ? song.durationMs : probed;
     return MediaItem(
       id: song.id.toString(),
       title: song.title,
       artist: song.artistName,
       album: song.albumTitle,
-      duration: Duration(milliseconds: song.durationMs),
+      duration: Duration(milliseconds: durationMs),
       artUri:
           song.artworkPath == null ? null : Uri.file(song.artworkPath!),
     );

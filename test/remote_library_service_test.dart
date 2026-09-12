@@ -77,12 +77,25 @@ class _FakeWriter implements LibraryWriterRepository {
   Future<List<ExistingSongInfo>> loadExistingSongs() async => [];
 
   @override
-  Future<int> removeSongsMissingFrom(Set<String> validPaths) async => 0;
+  Future<int> removeSongsMissingFrom(
+    Set<String> validPaths, {
+    required SourceType sourceType,
+  }) async =>
+      0;
+
+  @override
+  Future<int> removeAllOfSource(SourceType sourceType) async => 0;
 
   @override
   Future<void> saveLyricsText({
     required int songId,
     required String text,
+  }) async {}
+
+  @override
+  Future<void> setSongDuration({
+    required int songId,
+    required int durationMs,
   }) async {}
 }
 
@@ -121,7 +134,8 @@ class _FakeLibrary implements LibraryRepository {
   Future<List<Song>> songsByArtist(int artistId) async => [];
 
   @override
-  Stream<List<Album>> watchAlbums() => Stream.value(const <Album>[]);
+  Stream<List<Album>> watchAlbums({SourceType? sourceType}) =>
+      Stream.value(const <Album>[]);
 
   @override
   Stream<List<Artist>> watchArtists() => Stream.value(const <Artist>[]);

@@ -8,6 +8,7 @@ import 'package:whisplayer/data/db/daos/playlist_dao.dart';
 import 'package:whisplayer/data/db/daos/remote_server_dao.dart';
 import 'package:whisplayer/data/db/daos/settings_dao.dart';
 import 'package:whisplayer/data/db/daos/song_dao.dart';
+import 'package:whisplayer/data/db/daos/webdav_server_dao.dart';
 import 'package:whisplayer/data/db/tables.dart';
 import 'package:whisplayer/domain/entities/source_type.dart';
 
@@ -23,6 +24,7 @@ part 'app_database.g.dart';
     PlayHistory,
     SettingsKv,
     RemoteServers,
+    WebDavServers,
   ],
   daos: [
     SongDao,
@@ -32,6 +34,7 @@ part 'app_database.g.dart';
     HistoryDao,
     SettingsDao,
     RemoteServerDao,
+    WebDavServerDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -44,7 +47,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -58,6 +61,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (fromVersion < 3) {
             await m.createTable(remoteServers);
+          }
+          if (fromVersion < 4) {
+            await m.createTable(webDavServers);
           }
         },
         beforeOpen: (details) async {

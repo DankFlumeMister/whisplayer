@@ -515,17 +515,16 @@ class _RemoteAlbumsPageState extends ConsumerState<RemoteAlbumsPage> {
             icon: _viewToggleIcon(),
           ),
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: l10n.tooltipManageServers,
-            onPressed: () async {
-              await context.push('/settings/remote-servers');
-              await _load(refresh: true);
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: l10n.tooltipRefresh,
             onPressed: () => unawaited(_load(refresh: true)),
+          ),
+          // Settings is always the right-most action so it sits in the same
+          // place on every tab.
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: l10n.settingsTitle,
+            onPressed: () => unawaited(context.push('/settings')),
           ),
         ],
       ),

@@ -2,16 +2,23 @@ import 'dart:async';
 
 import 'package:whisplayer/application/scanner/scan_planner.dart';
 import 'package:whisplayer/domain/entities/scan_progress.dart';
+import 'package:whisplayer/domain/entities/source_type.dart';
 import 'package:whisplayer/domain/entities/storage_entry.dart';
 import 'package:whisplayer/domain/repositories/library_writer_repository.dart';
 import 'package:whisplayer/domain/repositories/metadata_reader.dart';
 import 'package:whisplayer/domain/repositories/storage_source.dart';
 
 class MusicScanner {
+  /// Creates a scanner for one source.
+  ///
+  /// [sourceType] scopes the end-of-scan cleanup: only rows of that source
+  /// are eligible for deletion, so scanning a WebDAV share can never remove
+  /// the local library and vice versa.
   MusicScanner({
     required StorageSource storageSource,
     required MetadataReader metadataReader,
     required LibraryWriterRepository writerRepository,
+    this.sourceType = SourceType.local,
   })  : _storage = storageSource,
         _reader = metadataReader,
         _writer = writerRepository;
@@ -19,6 +26,9 @@ class MusicScanner {
   final StorageSource _storage;
   final MetadataReader _reader;
   final LibraryWriterRepository _writer;
+
+  /// Which `songs` rows this scan owns.
+  final SourceType sourceType;
 
   bool _cancelled = false;
 
@@ -35,6 +45,7 @@ class MusicScanner {
     yield const ScanProgress(phase: ScanPhase.walking);
 
     final found = <StorageEntry>[];
+    var walkFailed = false;
     for (final dir in includeDirs) {
       if (_cancelled) {
         return;
@@ -42,6 +53,7 @@ class MusicScanner {
       try {
         found.addAll(await _storage.listAudioFiles(dir, excludeDirs));
       } on Object catch (e) {
+        walkFailed = true;
         yield ScanProgress(
           phase: ScanPhase.error,
           message: 'Failed to walk $dir: $e',
@@ -108,8 +120,16 @@ class MusicScanner {
     final validPaths = {
       for (final entry in found) entry.path,
     };
-    final removed =
-        await _writer.removeSongsMissingFrom(validPaths);
+    // A walk that failed anywhere reports an incomplete [found]. Deleting
+    // "everything not seen" then would throw away songs that are merely
+    // unreachable this run — an offline share would empty its whole source.
+    // Tidiness is never worth that: skip the cleanup and keep the rows.
+    final removed = walkFailed
+        ? 0
+        : await _writer.removeSongsMissingFrom(
+            validPaths,
+            sourceType: sourceType,
+          );
 
     yield ScanProgress(
       phase: ScanPhase.done,

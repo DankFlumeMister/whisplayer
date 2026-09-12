@@ -80,6 +80,7 @@ class _LibraryPageState extends ConsumerState<LibraryPage> {
         headerSliverBuilder: (context, innerBoxScrolled) => [
           SliverAppBar(
             pinned: true,
+            title: Text(l10n.localTab),
             actions: [
               IconButton(
                 tooltip: l10n.tooltipRecent,
